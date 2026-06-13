@@ -17,12 +17,23 @@ def structure_observation(text: str) -> dict:
         "bioreactor",
         "marker",
         "assay",
+        "potency",
+        "cell count",
+        "positive control",
+        "control",
+        "plate edge",
+        "edge wells",
+        "reagent",
+        "lot",
+        "protocol",
     ]
     for token in signal_tokens:
         if token in lower:
             signals.append(token)
 
-    if any(t in lower for t in ["organoid", "organ-on-chip", "tissue engineering", "bioreactor"]):
+    if any(t in lower for t in ["potency assay", "cell-based", "plate edge", "edge wells", "positive control", "reagent lot"]):
+        domain = "biotech R&D assay troubleshooting"
+    elif any(t in lower for t in ["organoid", "organ-on-chip", "tissue engineering", "bioreactor"]):
         domain = "living tissue R&D / tissue engineering QC"
     elif any(t in lower for t in ["tissue", "preservation", "cold", "perfusion"]):
         domain = "ex-vivo tissue state / preservation R&D"

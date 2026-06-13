@@ -1,5 +1,19 @@
 def retrieve_evidence(structured: dict, hypotheses: list[dict]) -> list[dict]:
     # MVP uses curated evidence; Tavily integration should replace/augment this.
+    text = structured.get("raw_note", "").lower()
+    if any(token in text for token in ["potency assay", "positive control", "plate edge", "edge wells", "reagent lot"]):
+        return [
+            {
+                "source": "Assay troubleshooting heuristics",
+                "claim": "Conflicting controls, edge-well effects, and reagent-lot changes often indicate technical or procedural causes that must be resolved before interpreting a biological effect.",
+                "caveat": "Heuristic support only; the system should recommend discriminating checks rather than invalidate or accept the run automatically.",
+            },
+            {
+                "source": "General biotech R&D reproducibility literature",
+                "claim": "Irreproducibility and failed replication in preclinical research are often driven by protocol, reagent, model, and analysis variability.",
+                "caveat": "Motivates the workflow, but does not identify the cause in this specific assay.",
+            },
+        ]
     return [
         {
             "source": "Madissoon et al., Tissue Stability Cell Atlas / PRJEB31843",

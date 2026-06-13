@@ -2,8 +2,8 @@
 
 Status: v1 — segment comparison for the product-definition sprint (June 2026).
 
-Goal: decide **who to build for and contact first**. Each segment is scored 1–5
-(5 = best for BSN) on the dimensions the wedge decision actually turns on.
+Goal: decide **which workflows to demo and which users to contact first**. Each segment is scored 1–5
+(5 = best for BSN) on the dimensions the use-case decision actually turns on.
 Scores are judgment calls grounded in the landscape scan and the research docs,
 not survey data — they are hypotheses to validate, not facts.
 
@@ -20,7 +20,7 @@ not survey data — they are hypotheses to validate, not facts.
 | Biotech R&D assay-troubleshooting teams | 4 | 4 | 4 | 4 | 4 | 4 | **24** |
 
 **Read:** organoid / organ-on-chip teams and biotech R&D assay-troubleshooting
-teams are the most attractive first wedges. Perfusion scores lowest on
+teams are the most attractive demo/validation use cases. Perfusion scores lowest on
 **regulatory risk** and **reachability** despite the strongest thesis resonance.
 
 ---
@@ -43,7 +43,7 @@ teams are the most attractive first wedges. Perfusion scores lowest on
 - **Reachability:** hard — clinical/academic gatekeeping, long trust cycles.
 - **BSN fit:** strong thesis resonance, but the safe product here is narrow
   (evidence/uncertainty explainer) and collides with device viability framing.
-- **Verdict:** **thesis-resonant demo, weak first commercial wedge.** Keep as the
+- **Verdict:** **thesis-resonant demo, weak product category.** Keep as the
   demo's emotional anchor, not the go-to-market.
 
 ---
@@ -67,7 +67,7 @@ teams are the most attractive first wedges. Perfusion scores lowest on
 
 ---
 
-## 3. Organoid / organ-on-chip teams  ⭐ top wedge
+## 3. Organoid / organ-on-chip teams  ⭐ strong use case
 
 - **User role:** R&D scientists and platform engineers at organoid/OoC companies,
   drug-discovery groups, and CROs running these models.
@@ -126,14 +126,14 @@ teams are the most attractive first wedges. Perfusion scores lowest on
 - **Regulatory risk:** low (research use).
 - **Reachability:** good but unfocused — "everyone" is hard to sell to.
 - **BSN fit:** strong as the **platform vision**, but too broad to be the *first*
-  wedge. Use organoid/OoC QC as the sharp entry, then generalize here.
+  category if over-narrowed. Use organoid/OoC QC as a concrete test case, not the product definition.
 
 ---
 
-## Implication for the wedge
+## Implication for use-case selection
 
-Lead commercial validation with **organoid / organ-on-chip + tissue-engineering QC
-troubleshooting** (segments 3 and 2), keep **perfusion/preservation** as the
-thesis-resonant *demo* (segment 1, not the GTM), and treat **biomarker/assay
-planning** (segment 4) as the natural second feature on the path to the broad
-**R&D troubleshooting platform** (segment 5). See `decision-memo.md`.
+Market BioSignal Navigator as a **general biotech R&D troubleshooting workspace**.
+Use **organoid / organ-on-chip + tissue-engineering QC troubleshooting** (segments 3
+and 2), **assay troubleshooting** (segment 5), and **perfusion/preservation**
+(segment 1) as concrete demo workflows that prove the same underlying product loop.
+See `decision-memo.md` and `demo-workflows.md`.

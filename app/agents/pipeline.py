@@ -57,17 +57,17 @@ def _workflow_context(structured: dict) -> dict:
     """Translate the research sprint into product-facing context for the demo.
 
     The research loop should improve the product immediately: every run now tells
-    the viewer whether this case is the hackathon proof, the first commercial
-    wedge, or the broader platform vision.
+    the viewer which biotech R&D workflow is being tested without narrowing the
+    product category to that use case.
     """
     domain = str(structured.get("domain") or "").lower()
     if "tissue engineering" in domain:
         return {
-            "role": "First commercial wedge",
+            "role": "Use case: tissue-model QC / assay troubleshooting",
             "target_user": "Organoid / organ-on-chip / tissue-engineering R&D and QC teams",
             "workflow_moment": "A batch or model gives an ambiguous QC / assay readout before the team commits to the next experiment.",
             "product_gap": "Imaging and lab-data tools quantify features; they do not route ambiguous readouts to mechanisms, evidence, and the next discriminating measurement.",
-            "next_validation": "Ask 3–5 organoid/OoC teams where aggregate signals become ambiguous and which assays they trust for the next call.",
+            "next_validation": "Use this as one concrete test case for the broader biotech-research troubleshooting product.",
         }
     if "preservation" in domain or "ex-vivo" in domain:
         return {
@@ -75,10 +75,18 @@ def _workflow_context(structured: dict) -> dict:
             "target_user": "Perfusion, preservation, and living-tissue R&D teams",
             "workflow_moment": "A preserved or perfused tissue sample shows underdetermined macro readouts and the team needs the next measurement, not a viability verdict.",
             "product_gap": "Perfusion devices show pressures, flows, lactate, gases, and resistance; the unowned layer is uncertainty-aware interpretation and next-measurement selection.",
-            "next_validation": "Use this case as the demo, but validate the first product wedge with organoid/OoC and tissue-engineering QC users after the hackathon.",
+            "next_validation": "Use this as the visceral demo case for the broader biotech-research troubleshooting product.",
+        }
+    if "assay" in domain:
+        return {
+            "role": "General biotech R&D workflow",
+            "target_user": "R&D scientists, assay-development teams, and CRO scientists",
+            "workflow_moment": "An assay produces a conflicting or low-confidence result and the team must decide whether to rerun, invalidate, or run an orthogonal check.",
+            "product_gap": "ELN/LIMS systems record the run; BioSignal Navigator turns conflicting controls, artifacts, and biology into a next-action plan.",
+            "next_validation": "Use this as the broadest demo of the general biotech-research troubleshooting category.",
         }
     return {
-        "role": "Platform vision",
+        "role": "General biotech R&D workflow",
         "target_user": "Biotech R&D assay-troubleshooting teams",
         "workflow_moment": "A living-system experiment produces ambiguous signals and a senior scientist must decide what to test next.",
         "product_gap": "ELN/LIMS tools capture data; BioSignal Navigator owns the mechanism/evidence/next-measurement loop.",

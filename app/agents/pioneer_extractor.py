@@ -56,6 +56,15 @@ _SIGNAL_LEXICON = {
     "bile": "bile_output",
     "urine": "urine_output",
     "creatinine": "creatinine",
+    "potency": "assay_potency_signal",
+    "signal": "assay_signal",
+    "cell count": "cell_count",
+    "positive control": "positive_control",
+    "control": "assay_control",
+    "plate edge": "plate_edge_effect",
+    "edge wells": "plate_edge_effect",
+    "reagent": "reagent_lot",
+    "lot": "reagent_lot",
 }
 
 # words that signal a trend, mapped to a canonical trend label
@@ -115,6 +124,12 @@ _MECHANISM_RULES = {
     "creatinine": [("tubuloepithelial_stress", 0.6)],
     "NGAL": [("tubuloepithelial_stress", 0.62)],
     "KIM-1": [("tubuloepithelial_stress", 0.62)],
+    "assay_potency_signal": [("technical_artifact", 0.55), ("reagent_or_protocol_drift", 0.62)],
+    "assay_signal": [("technical_artifact", 0.55), ("reagent_or_protocol_drift", 0.6)],
+    "positive_control": [("reagent_or_protocol_drift", 0.68)],
+    "assay_control": [("reagent_or_protocol_drift", 0.62)],
+    "plate_edge_effect": [("technical_artifact", 0.72)],
+    "reagent_lot": [("reagent_or_protocol_drift", 0.7)],
 }
 
 # mechanism -> discriminating measurement (label, base_confidence)
@@ -133,6 +148,8 @@ _MEASUREMENT_RULES = {
     "apoptosis": ("caspase_or_annexin_assay", 0.68),
     "protocol_drift": ("repeat_with_control_batch", 0.58),
     "tubuloepithelial_stress": ("tubular_injury_marker_panel", 0.63),
+    "technical_artifact": ("control_and_layout_repeat", 0.7),
+    "reagent_or_protocol_drift": ("old_vs_new_reagent_lot_control", 0.68),
 }
 
 # tokens that indicate a request for a clinical claim we must not make

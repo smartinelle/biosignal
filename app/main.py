@@ -46,9 +46,9 @@ st.markdown(
 with st.container(border=True):
     st.markdown("### Product shape")
     c1, c2, c3 = st.columns(3)
-    c1.markdown("**Demo proof**  \nex-vivo tissue preservation ambiguity")
-    c2.markdown("**First wedge**  \norganoid / organ-on-chip / tissue-engineering QC")
-    c3.markdown("**Platform layer**  \ninterpretation + next-measurement selection")
+    c1.markdown("**Product category**  \nbiotech R&D troubleshooting")
+    c2.markdown("**Demo use cases**  \npreservation, organoids, organ-on-chip")
+    c3.markdown("**Core workflow**  \ninterpretation + next-measurement selection")
 
 st.info(
     "Research workflow only — not diagnosis, treatment, viability prediction, or clinical decision support.",
@@ -60,13 +60,14 @@ with st.sidebar:
     preset = st.selectbox(
         "Case",
         [
+            "Assay troubleshooting anomaly",
             "Living tissue preservation failure",
             "Organoid QC anomaly",
             "Organ-on-chip drug response anomaly",
         ],
     )
-    st.markdown("**Demo proof:** tissue preservation ambiguity.")
-    st.markdown("**Product wedge:** organoid / OoC / tissue-engineering QC troubleshooting.")
+    st.markdown("**Product:** general biotech R&D troubleshooting.")
+    st.markdown("**Use cases:** tissue preservation, organoid QC, organ-on-chip assays.")
     st.markdown("**Atira fit:** specialized agents coordinate with a human expert around uncertainty.")
 
     st.divider()
@@ -77,7 +78,9 @@ with st.sidebar:
     st.markdown(f"- **Tavily** — {_badge(_key_present('TAVILY_API_KEY'))}")
     st.markdown("- **Aikido** — 🔒 security scan (submission docs)")
 
-if preset == "Living tissue preservation failure":
+if preset == "Assay troubleshooting anomaly":
+    default_obs = """Context: biotech R&D cell-based potency assay. Observations: signal is 40% lower than expected, cell count is normal, positive control drifted slightly, plate edge wells look worse, reagent lot changed last week. Goal: decide whether this is biology, protocol drift, reagent failure, or plate artifact before repeating the study."""
+elif preset == "Living tissue preservation failure":
     default_obs = """Context: ex vivo preserved tissue sample in a biotech R&D workflow. Preservation duration: 48h cold storage. Macro signals: lactate rising, pH falling, vascular resistance increasing, oxygenation uncertain. Goal: debug the experiment and decide which measurement should be run next, without making a clinical viability claim."""
 elif preset == "Organoid QC anomaly":
     default_obs = """Context: engineered organoid QC batch. Observations: abnormal morphology, borderline viability stain, media lactate rising, differentiation marker uncertain, possible hypoxic core. Goal: identify likely failure mechanisms and choose the next assays before repeating the batch."""

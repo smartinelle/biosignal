@@ -10,8 +10,8 @@ Audience: Sacha. Inputs: `product-research-sprint.md`, `user-segments.md`,
 ## Recommendation in one line
 
 > Ship BioSignal Navigator as the **agent–human interpretation/troubleshooting layer
-> for ambiguous living-tissue experiments**, demo it on tissue preservation, and pursue
-> **organoid / organ-on-chip / tissue-engineering QC** as the first real wedge.
+> for biotech research workflows**, and use living-tissue experiments as concrete demo
+> cases rather than the product category.
 
 ---
 
@@ -34,17 +34,18 @@ Lean into three things judges can see:
 - **Honest partner orchestration** — live-vs-fallback badges; Pioneer-style structured
   extraction as a deliberate artifact.
 
-## 2. Best post-hackathon wedge for Sacha to explore
+## 2. Best post-hackathon use cases for Sacha to explore
 
-**Organoid / organ-on-chip / tissue-engineering QC troubleshooting.** It wins the
-scorecard (`user-segments.md`) on pain × reachability × low-regulation × thesis fit:
+**Organoid / organ-on-chip / tissue-engineering QC troubleshooting** remains a strong
+test use case. It wins the scorecard (`user-segments.md`) on pain × reachability ×
+low-regulation × thesis fit:
 - Documented, acute pain (batch variability, no standardized QC).
 - Research-use (not patient care) → low regulatory load.
 - Reachable, concentrated buyer community already paying for platforms/imaging.
 - Keeps the thesis (hidden tissue-state interpretation) without transplant baggage.
 
 Treat **machine perfusion / preservation** as the thesis-resonant demo and long-term
-"hero" story, **not** the first commercial target — it is the most regulated, least
+"hero" story, **not** the product category — it is the most regulated, least
 reachable segment, and sits closest to the viability red line.
 
 ## 3. Which user segment to contact first
@@ -119,8 +120,10 @@ Gate every new feature on a real workflow moment named by an interviewed user.
 
 - **No pivot.** The "agent–human troubleshooting for living-tissue R&D" thesis is
   confirmed, not replaced.
-- **Sharper wedge:** explicitly **organoid/OoC/tissue-engineering QC first**, with
-  perfusion demoted from candidate-GTM to demo/credibility anchor.
+- **Sharper use-case map:** tissue engineering / organoid / OoC QC is a strong test
+  case, while perfusion remains the demo/credibility anchor. The product itself is
+  marketed as general biotech R&D troubleshooting, not a niche tissue-engineering
+  platform.
 - **Sharper differentiator:** the **interpretation layer nobody owns** + **uncertainty-
   first** as a deliberate counter-position to device "viability assessment" marketing.
 - **Boundary reaffirmed:** no-clinical-claims is now framed as a *competitive feature*,

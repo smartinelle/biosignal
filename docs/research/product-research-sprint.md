@@ -12,10 +12,10 @@ opinionated; the formal decision is in `decision-memo.md`.
 ## TL;DR
 
 - **Product category (company):** an **agent–human troubleshooting workspace for
-  ambiguous living-tissue R&D experiments** — the *interpretation layer* between raw
-  readouts and the next experiment. (Scope ladder Level 2–3.)
-- **First wedge (GTM):** **organoid / organ-on-chip / tissue-engineering QC failure
-  investigation** — high pain, low regulation, reachable buyers, thesis-aligned.
+  biotech research workflows** — the *interpretation layer* between raw readouts,
+  evidence, and the next experiment. (Scope ladder Level 2–3.)
+- **Strong test use case:** **organoid / organ-on-chip / tissue-engineering QC failure
+  investigation** — high pain, low regulation, reachable users, thesis-aligned.
 - **Demo proof (hackathon):** the **ex-vivo tissue-preservation failure** case — most
   visceral, thesis-resonant, and anchored by a real dataset (PRJEB31843).
 - **Hard boundary:** never claim viability, transplant/discard, diagnosis, treatment,
@@ -31,21 +31,22 @@ opinionated; the formal decision is in `decision-memo.md`.
 | 1 | Ex-vivo biological state monitoring | Thesis core; visceral macro/micro gap | Collides with device viability framing; transplant-regulated | **Demo, not GTM** |
 | 2 | Translational biomarker / assay-planning copilot | Broad; literature-grounded; safe | Risks generic feel without a sharp readout demo | **Second feature** |
 | 3 | Machine-perfusion evidence router | Sharpest thesis demo | Narrow buyer; regulated; device-adjacent | **Demo vertical only** |
-| 4 | **Tissue-engineering / organoid / OoC QC troubleshooting** | Best pain × reachability × low regulation × thesis fit | Smaller logos than pharma | **First wedge ✅** |
-| 5 | Horizontal biotech R&D troubleshooting platform | Largest TAM; the eventual vision | Too broad to enter cold | **Platform vision** |
+| 4 | Tissue-engineering / organoid / OoC QC troubleshooting | Best pain × reachability × low regulation × thesis fit | Too narrow if marketed as the product | **Strong use case** |
+| 5 | **Biotech R&D troubleshooting workspace** | Broad category; covers assays, models, QC, evidence, and next-measurement decisions | Needs concrete workflows to avoid sounding generic | **Product category ✅** |
 
-The winner is a **Level-2/3 platform** (living-tissue state interpretation /
-troubleshooting) entered through the **organoid/OoC QC wedge** (Level-0/1 proof),
-exactly the altitude the validation loop recommended.
+The winner is a **Level-2/3 biotech R&D troubleshooting platform**. Living-tissue
+systems, organoids, OoC, and preservation are demo/proof workflows, not the whole
+product category. This keeps the company broad while making the demo concrete.
 
 ---
 
 ## Target users
 
-- **Primary (build for):** R&D scientists and platform engineers on organoid /
-  organ-on-chip / engineered-tissue teams and the CROs running these models.
-- **Secondary:** translational-biology / biomarker scientists doing assay/panel design.
-- **Demo persona (resonates, don't sell first):** perfusion / preservation researchers.
+- **Primary (build for):** biotech R&D scientists troubleshooting ambiguous assays,
+  models, QC runs, and readout conflicts.
+- **Concrete use-case users:** organoid / organ-on-chip / engineered-tissue teams,
+  translational-biology / biomarker scientists, and assay-development teams.
+- **Demo persona (resonates, don't over-narrow to it):** perfusion / preservation researchers.
 
 ---
 
@@ -53,8 +54,8 @@ exactly the altitude the validation loop recommended.
 
 The product fires at one specific, repeated moment:
 
-> A living-tissue experiment produced an **ambiguous multimodal readout** and the team
-> must decide **what to run next** before burning another batch/cycle.
+> A biotech research experiment produced an **ambiguous multimodal readout** and the
+> team must decide **what to run next** before burning another batch/cycle.
 
 Concretely: a borderline viability stain + rising media lactate + uncertain
 differentiation marker (organoid), or barrier leak + inflammatory marker + O₂ shift
@@ -93,7 +94,7 @@ rather than pretending to resolve it.
   53 landmark cancer papers.
   [Freedman et al., PLOS Biology 2015](https://journals.plos.org/plosbiology/article?id=10.1371/journal.pbio.1002165),
   [Science News summary](https://www.sciencenews.org/article/irreproducible-life-sciences-research-us-costs-28-billion)
-- **The wedge pain is acute and documented.** Organoid/OoC variability and the lack
+- **A concrete use-case pain is acute and documented.** Organoid/OoC variability and the lack
   of standardized QC are named as primary blockers to translation ("3R": reproducibility,
   regulatory frameworks, real-time monitoring).
   [Organoid QC framework (Nature Sci Reports 2025)](https://www.nature.com/articles/s41598-025-14425-x),
@@ -115,9 +116,9 @@ rather than pretending to resolve it.
 - Sacha's thesis is the **macro→micro bridge**: how sensors, omics, imaging, and
   agentic workflows help reason about **hidden biological state**. BSN *is* that
   bridge, productized as an interpretation layer.
-- The organoid/OoC wedge keeps the thesis intact (hidden tissue-state interpretation)
-  while **shedding the transplant regulatory load** — a more fundable, faster-iterating
-  surface for a founder to learn on.
+- The organoid/OoC use case keeps the thesis intact (hidden state interpretation)
+  while **shedding the transplant regulatory load** — a concrete surface for the broader
+  biotech R&D troubleshooting product to learn on.
 - Founder credibility: Sacha can speak the biology, which is exactly the moat the
   horizontal copilots (Benchling/Scispot) lack in this vertical.
 - The ex-vivo perfusion story remains the **emotional/intellectual anchor** of the
@@ -147,15 +148,14 @@ rather than pretending to resolve it.
 
 ---
 
-## Recommended product wedge (opinionated)
+## Recommended product direction (opinionated)
 
-> Build the **agent–human troubleshooting workspace for ambiguous living-tissue
-> experiments**, and validate it first with **organoid / organ-on-chip / tissue-
-> engineering QC teams** at the "why did this batch behave ambiguously and what do I
-> measure next?" moment. Demo it with the **tissue-preservation failure** case for
-> thesis resonance, position the company as the **interpretation layer** the device,
-> imaging, and ELN vendors don't own, and hold the line on the no-clinical-claims
-> boundary as a *feature*, not a limitation.
+> Build the **agent–human troubleshooting workspace for biotech research workflows**.
+> Validate it through concrete living-system use cases — organoid/OoC/tissue-QC and
+> tissue-preservation failures — but market the product as the **interpretation layer**
+> that turns ambiguous research readouts into mechanisms, evidence, next measurements,
+> and human review. Hold the line on the no-clinical-claims boundary as a *feature*,
+> not a limitation.
 
 Feature gating is unchanged and reaffirmed in `feature-gates.md`:
 **Green** = observation structuring, uncertainty bottleneck, evidence cards,
