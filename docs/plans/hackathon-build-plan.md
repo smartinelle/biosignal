@@ -67,6 +67,22 @@ Strategic guardrails:
 
 ---
 
+## Research-first gate
+
+Before building additional product features, run the verification loop in:
+
+```text
+docs/plans/research-validation-loop.md
+```
+
+Reason: the product should be validated against real organ preservation/perfusion workflows, biomarkers, datasets, and industry constraints before agents implement features. The current BioSignal Navigator idea is promising but should be narrowed by evidence.
+
+Build workstreams below should start only after the research loop produces:
+- `docs/research/workflows-and-biomarkers.md`
+- `docs/research/dataset-feasibility.md`
+- `docs/research/evidence-matrix.md`
+- `docs/research/feature-gates.md`
+
 ## Goal
 
 Build a credible 1-day hackathon MVP for the **current working idea, BioSignal Navigator**: an agent-human biomedical evidence-routing demo that maps messy observations to possible mechanisms, evidence, next measurements, and a human review question. If the product idea changes, update this goal and downstream workstreams while preserving the durable context above.
