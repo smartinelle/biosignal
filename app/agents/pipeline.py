@@ -53,6 +53,39 @@ def _uncertainty_bottleneck(structured: dict) -> dict:
     }
 
 
+def _workflow_context(structured: dict) -> dict:
+    """Translate the research sprint into product-facing context for the demo.
+
+    The research loop should improve the product immediately: every run now tells
+    the viewer whether this case is the hackathon proof, the first commercial
+    wedge, or the broader platform vision.
+    """
+    domain = str(structured.get("domain") or "").lower()
+    if "tissue engineering" in domain:
+        return {
+            "role": "First commercial wedge",
+            "target_user": "Organoid / organ-on-chip / tissue-engineering R&D and QC teams",
+            "workflow_moment": "A batch or model gives an ambiguous QC / assay readout before the team commits to the next experiment.",
+            "product_gap": "Imaging and lab-data tools quantify features; they do not route ambiguous readouts to mechanisms, evidence, and the next discriminating measurement.",
+            "next_validation": "Ask 3–5 organoid/OoC teams where aggregate signals become ambiguous and which assays they trust for the next call.",
+        }
+    if "preservation" in domain or "ex-vivo" in domain:
+        return {
+            "role": "Hackathon proof / thesis anchor",
+            "target_user": "Perfusion, preservation, and living-tissue R&D teams",
+            "workflow_moment": "A preserved or perfused tissue sample shows underdetermined macro readouts and the team needs the next measurement, not a viability verdict.",
+            "product_gap": "Perfusion devices show pressures, flows, lactate, gases, and resistance; the unowned layer is uncertainty-aware interpretation and next-measurement selection.",
+            "next_validation": "Use this case as the demo, but validate the first product wedge with organoid/OoC and tissue-engineering QC users after the hackathon.",
+        }
+    return {
+        "role": "Platform vision",
+        "target_user": "Biotech R&D assay-troubleshooting teams",
+        "workflow_moment": "A living-system experiment produces ambiguous signals and a senior scientist must decide what to test next.",
+        "product_gap": "ELN/LIMS tools capture data; BioSignal Navigator owns the mechanism/evidence/next-measurement loop.",
+        "next_validation": "Narrow to a repeated workflow moment before adding more features.",
+    }
+
+
 def _triples_from_pioneer(pioneer: dict, hypotheses: list[dict], measurements: list[dict]) -> list[dict]:
     """Build signal → hypothesis → next-measurement triples from extracted relations.
 
@@ -144,6 +177,7 @@ def run_pipeline(raw_observation: str) -> dict:
     measurements = suggest_measurements(structured, hypotheses, evidence)
     question = human_review_question(structured, evidence, measurements)
     bottleneck = _uncertainty_bottleneck(structured)
+    workflow_context = _workflow_context(structured)
 
     # Optional Gemini synthesis; deterministic fallback otherwise.
     synthesis = {"text": "", "mode": "fallback", "detail": "Gemini wrapper unavailable; deterministic memo used."}
@@ -159,6 +193,7 @@ def run_pipeline(raw_observation: str) -> dict:
         "measurements": measurements,
         "human_question": question,
         "uncertainty_bottleneck": bottleneck,
+        "workflow_context": workflow_context,
         "pioneer_triples": triples,
         "pioneer_structured": pioneer,
         "synthesis": synthesis,
@@ -168,8 +203,9 @@ def run_pipeline(raw_observation: str) -> dict:
             "tavily": {"mode": tavily.get("mode")},
         },
         "business_impact": [
-            "Turns an ambiguous experiment failure into a structured troubleshooting memo.",
-            "Narrows many possible assays into a few discriminating measurements.",
+            "Turns an ambiguous living-system failure into a structured troubleshooting memo.",
+            "Narrows many plausible mechanisms into a few discriminating measurements.",
+            "Positions BioSignal Navigator as the interpretation layer on top of instruments and ELN/LIMS data, not a system of record.",
             "Escalates only the unresolved scientific judgment to a senior human reviewer.",
         ],
         "partner_trace": _partner_trace(pioneer, synthesis, tavily),

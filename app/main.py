@@ -43,6 +43,13 @@ st.markdown(
     """
 )
 
+with st.container(border=True):
+    st.markdown("### Product shape")
+    c1, c2, c3 = st.columns(3)
+    c1.markdown("**Demo proof**  \nex-vivo tissue preservation ambiguity")
+    c2.markdown("**First wedge**  \norganoid / organ-on-chip / tissue-engineering QC")
+    c3.markdown("**Platform layer**  \ninterpretation + next-measurement selection")
+
 st.info(
     "Research workflow only — not diagnosis, treatment, viability prediction, or clinical decision support.",
     icon="🛡️",
@@ -58,7 +65,8 @@ with st.sidebar:
             "Organ-on-chip drug response anomaly",
         ],
     )
-    st.markdown("**Wedge:** biotech experiment troubleshooting, demonstrated on living tissue systems.")
+    st.markdown("**Demo proof:** tissue preservation ambiguity.")
+    st.markdown("**Product wedge:** organoid / OoC / tissue-engineering QC troubleshooting.")
     st.markdown("**Atira fit:** specialized agents coordinate with a human expert around uncertainty.")
 
     st.divider()
@@ -80,6 +88,16 @@ observation = st.text_area("Ambiguous experiment observation", value=default_obs
 
 if st.button("Run agent workflow", type="primary"):
     result = run_pipeline(observation)
+
+    # 0. Product context — the research loop translated into the product now.
+    context = result["workflow_context"]
+    with st.container(border=True):
+        st.markdown("## 0. Product context")
+        st.markdown(f"**Role of this case:** {context['role']}")
+        st.markdown(f"**Target user:** {context['target_user']}")
+        st.markdown(f"**Workflow moment:** {context['workflow_moment']}")
+        st.markdown(f"**Gap:** {context['product_gap']}")
+        st.caption(f"Next validation: {context['next_validation']}")
 
     # 1. Agent orchestration trace
     st.subheader("1. Agent orchestration trace")
