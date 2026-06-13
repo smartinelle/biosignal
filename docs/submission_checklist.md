@@ -46,10 +46,10 @@ curl -fsS --retry-connrefused --retry 15 --retry-delay 1 http://127.0.0.1:8501/_
 - [ ] `TAVILY_API_KEY` set; evidence cards show live sources.
 
 ### Pioneer (Fastino) — 500€ side challenge
-- [ ] Deterministic GLiNER2-style extractor visible in the UI (works with no key).
-- [ ] To go live: deploy/fine-tune a model and set `PIONEER_MODEL_ID`
-      (`PIONEER_API_KEY` alone is not enough).
+- [ ] Deterministic GLiNER2-style extractor visible in the UI — **this is the shipped artifact** (works with no key).
 - [ ] Submission narrative ready (`docs/pioneer_strategy.md`).
+- [ ] (Optional, not pursued for this build) deploy a fine-tuned model and set
+      `PIONEER_MODEL_ID` to route extraction through a live Pioneer model.
 
 ### Aikido — 1000€ side challenge
 - [ ] Free Aikido account created.

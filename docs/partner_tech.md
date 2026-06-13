@@ -8,7 +8,7 @@ partner trace) rather than hiding it in the backend.
 |---|---|---|---|
 | **Google Gemini** | Synthesizes the caveated troubleshooting memo | `GEMINI_API_KEY` / `OPENROUTER_API_KEY` | Deterministic memo from pipeline outputs |
 | **Tavily** | Live literature/source retrieval for evidence cards | `TAVILY_API_KEY` | Curated evidence cards (PRJEB31843 etc.) |
-| **Pioneer (Fastino)** | Structured signal → hypothesis → measurement extraction | `PIONEER_API_KEY` + `PIONEER_MODEL_ID` | Deterministic GLiNER2-style extractor |
+| **Pioneer (Fastino)** | Structured signal → hypothesis → measurement extraction | _(optional)_ `PIONEER_API_KEY` + `PIONEER_MODEL_ID` | Deterministic GLiNER2-style extractor (**the shipped artifact**) |
 | **Aikido** | Repository security scan (security side challenge) | Connected GitHub repo | Documented in submission checklist |
 
 The demo runs fully on the fallbacks — keys only upgrade the experience.
@@ -41,11 +41,12 @@ small deterministic structured extractor. `extract_troubleshooting_structure()`
 returns typed entities, candidate mechanisms, suggested measurements, relation
 triples, and safety-boundary flags — repeatable for the same input.
 
-- **No credentials:** the deterministic extractor *is* the artifact (the demo's
-  Pioneer-style triples come from its relations).
-- **Live:** requires both `PIONEER_API_KEY` and a deployed `PIONEER_MODEL_ID`.
-  The live request shape is conservative and guarded; confirm the contract
-  against https://docs.pioneer.ai/introduction before relying on it.
+- **Shipped artifact:** the deterministic extractor *is* the Pioneer artifact —
+  the demo's Pioneer-style triples come from its relations. No credentials needed.
+- **Optional live route (not pursued for this build):** set both `PIONEER_API_KEY`
+  and a deployed `PIONEER_MODEL_ID`. The live request shape is conservative and
+  guarded; confirm the contract against https://docs.pioneer.ai/introduction
+  before relying on it.
 
 See `docs/pioneer_strategy.md` for the GLiNER2 fine-tune plan, label schema,
 synthetic-data plan, and eval plan.

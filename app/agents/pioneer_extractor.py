@@ -297,7 +297,7 @@ def _fallback_extract(note: str) -> dict:
         "context": context,
         "safety_flags": _safety_flags(note, observations),
         "mode": "fallback",
-        "detail": "Deterministic GLiNER2-style extractor (no Pioneer credentials configured).",
+        "detail": "Deterministic GLiNER2-style structured extractor — the Pioneer side-challenge artifact.",
     }
 
 
@@ -354,20 +354,13 @@ def extract_troubleshooting_structure(note: str) -> dict:
     Uses a deployed Pioneer model when credentials are present, otherwise the
     deterministic fallback. Never raises.
     """
-    status = pioneer_status()
-    if status["available"]:
+    # The deterministic extractor is the shipped Pioneer artifact. A deployed
+    # model (PIONEER_MODEL_ID) is an optional route, not a required step.
+    if pioneer_status()["available"]:
         live = _live_extract(note)
         if live is not None:
             return live
         fallback = _fallback_extract(note)
-        fallback["detail"] = "Pioneer credentials set but live call failed; deterministic extractor used."
+        fallback["detail"] = "Optional live Pioneer call failed; deterministic extractor used."
         return fallback
-
-    fallback = _fallback_extract(note)
-    missing = status.get("missing", [])
-    if missing == ["PIONEER_MODEL_ID"]:
-        fallback["detail"] = (
-            "Pioneer API key set but PIONEER_MODEL_ID is empty; deterministic extractor used. "
-            "Deploy/fine-tune a GLiNER2 model and set PIONEER_MODEL_ID to route extraction live."
-        )
-    return fallback
+    return _fallback_extract(note)

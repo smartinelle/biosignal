@@ -100,26 +100,30 @@ def _partner_trace(pioneer: dict, synthesis: dict, tavily: dict) -> list[dict]:
     return [
         {
             "tool": "Pioneer",
-            "role": "Fine-tuned-style structured signal → hypothesis → measurement extraction",
+            "role": "Deterministic GLiNER2-style structured signal → hypothesis → measurement extraction",
             "live": pioneer_live,
+            "badge": "live" if pioneer_live else "artifact",
             "status": pioneer.get("detail", ""),
         },
         {
             "tool": "Gemini",
             "role": "Mechanism synthesis and caveated troubleshooting memo",
             "live": gemini_live,
+            "badge": "live" if gemini_live else "fallback",
             "status": synthesis.get("detail", ""),
         },
         {
             "tool": "Tavily",
             "role": "Live literature / source retrieval for evidence cards",
             "live": tavily_live,
+            "badge": "live" if tavily_live else "fallback",
             "status": tavily.get("detail", ""),
         },
         {
             "tool": "Aikido",
             "role": "Repository security scan for the security side challenge",
             "live": False,
+            "badge": "docs",
             "status": "Run via connected GitHub repo; report screenshot included in submission docs.",
         },
     ]

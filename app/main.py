@@ -20,6 +20,14 @@ def _badge(is_live: bool) -> str:
     return "🟢 **LIVE**" if is_live else "⚪ Fallback"
 
 
+_BADGE_TOKENS = {
+    "live": "🟢 **LIVE**",
+    "fallback": "⚪ Fallback",
+    "artifact": "🧩 Deterministic artifact",
+    "docs": "🔒 Submission docs",
+}
+
+
 def _key_present(name: str) -> bool:
     return bool(os.getenv(name))
 
@@ -56,8 +64,8 @@ with st.sidebar:
     st.divider()
     st.subheader("Partner integrations")
     st.caption("The demo runs fully on deterministic fallbacks. Keys enable live partner tech.")
-    st.markdown(f"- **Pioneer** — {_badge(_key_present('PIONEER_API_KEY') and _key_present('PIONEER_MODEL_ID'))}")
-    st.markdown(f"- **Gemini** — {_badge(_key_present('GEMINI_API_KEY'))}")
+    st.markdown("- **Pioneer** — 🧩 deterministic extractor (the artifact)")
+    st.markdown(f"- **Gemini** — {_badge(_key_present('GEMINI_API_KEY') or _key_present('OPENROUTER_API_KEY'))}")
     st.markdown(f"- **Tavily** — {_badge(_key_present('TAVILY_API_KEY'))}")
     st.markdown("- **Aikido** — 🔒 security scan (submission docs)")
 
@@ -128,8 +136,9 @@ if st.button("Run agent workflow", type="primary"):
     # 6. Pioneer structured extraction artifact
     pioneer = result["pioneer_structured"]
     st.subheader("3. Pioneer structured extraction")
+    pioneer_badge = _BADGE_TOKENS["live"] if pioneer["mode"] == "live" else _BADGE_TOKENS["artifact"]
     st.caption(
-        f"Side-challenge artifact — {_badge(pioneer['mode'] == 'live')} · {pioneer['detail']}  "
+        f"Side-challenge artifact — {pioneer_badge} · {pioneer['detail']}  "
         "A deterministic GLiNER2-style extractor turns a messy note into typed entities, relations, and "
         "safety-boundary flags instead of an opaque LLM call."
     )
@@ -168,7 +177,8 @@ if st.button("Run agent workflow", type="primary"):
     st.subheader("4. Partner technology trace")
     st.caption("Live vs fallback is shown honestly — the demo never hides which integrations ran.")
     for item in result["partner_trace"]:
-        st.markdown(f"- {_badge(item['live'])} **{item['tool']}** — {item['role']}.")
+        badge = _BADGE_TOKENS.get(item.get("badge", ""), _badge(item["live"]))
+        st.markdown(f"- {badge} **{item['tool']}** — {item['role']}.")
         st.caption(f"    {item['status']}")
 
     # 8. Business impact
