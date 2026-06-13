@@ -15,11 +15,57 @@ The loop should answer:
 
 ## Research thesis
 
-The likely credible product is not "AI predicts viability." The credible product is:
+The likely credible product is not "AI predicts viability." The credible product is probably one level above organ preservation:
 
-> An evidence-routing and measurement-planning system that maps messy biomedical observations to plausible mechanisms, relevant evidence, candidate assays/biomarkers, uncertainty, and a human review question.
+> An AI workflow for **biomedical state interpretation**: helping teams translate messy biological observations into structured hypotheses, relevant evidence, candidate measurements, uncertainty, and a human review question.
+
+Organ preservation / perfusion should be treated as the **sharp demo vertical**, not necessarily the whole product category. The validation loop should therefore test both:
+
+1. **Platform-level need:** many biomedical workflows have ambiguous observable signals and hidden biological state.
+2. **Vertical wedge:** organ preservation/perfusion is a credible first demo because it makes the macro/micro gap concrete.
 
 This should be validated against literature, public datasets, and real workflow constraints before building features.
+
+## Scope ladder
+
+Research agents should evaluate ideas across this ladder before narrowing:
+
+### Level 0 — Specific dataset demo
+
+Example: "GSE293480 kidney NMP IRI/DGF explorer."
+
+Pros: credible, grounded, easy to cite.  
+Cons: too narrow; may look like a paper-specific tool.
+
+### Level 1 — Specific clinical/research workflow
+
+Example: "Kidney/liver machine perfusion evidence router."
+
+Pros: strong thesis fit; concrete users and biomarkers.  
+Cons: highly regulated and transplant-specific.
+
+### Level 2 — Ex-vivo biological state monitoring
+
+Example: "State interpretation for perfused organs, organoids, tissue slices, organ-on-chip, and tissue-engineering QC."
+
+Pros: still thesis-aligned; less transplant-regulated; broader market.  
+Cons: needs careful demo focus.
+
+### Level 3 — Translational biomarker / assay planning copilot
+
+Example: "From phenotype or assay anomaly to mechanisms, evidence, biomarkers, and next measurements."
+
+Pros: broad biotech/research platform; many datasets/workflows.  
+Cons: risks generic medical-AI feel unless the demo is sharp.
+
+### Level 4 — General medical decision support
+
+Example: "AI clinical reasoning over patient state."
+
+Pros: broad.  
+Cons: too regulated, too generic, and too easy to overclaim for this hackathon.
+
+**Preferred search zone:** Level 2 or Level 3 as the product category, with Level 1 or Level 0 as the demo proof.
 
 ## Evidence from quick initial scan
 
@@ -345,11 +391,12 @@ Likely risky features:
 
 ## First 2-hour validation sprint
 
-1. 20 min — create `docs/research/` skeleton.
-2. 35 min — Research Agent A: marker/workflow scan from review papers.
-3. 35 min — Research Agent B: dataset feasibility scan for GSE293480, PRJEB31843, SRTR/OPTN.
-4. 25 min — Research Agent C: evidence matrix + feature gate v0.
-5. 5 min — decide the build wedge.
+0. 15 min — choose the scope altitude using the scope ladder: Level 2/3 product category, Level 0/1 demo proof. Do not let the research sprint collapse into a single organ or dataset unless that is explicitly chosen as the demo only.
+1. 20 min — create/refine `docs/research/` skeleton.
+2. 35 min — Research Agent A: marker/workflow scan from review papers across at least two adjacent domains: organ perfusion plus tissue engineering/organoids/organ-on-chip/biomarker assay planning.
+3. 35 min — Research Agent B: dataset feasibility scan for GSE293480, PRJEB31843, SRTR/OPTN, plus at least one broader biomedical state/QC dataset class.
+4. 25 min — Research Agent C: evidence matrix + feature gate v0, separated by product-category claim vs demo-specific claim.
+5. 5 min — decide product altitude and demo wedge.
 
 ## Go/no-go decision rule
 
@@ -366,21 +413,31 @@ Build the highest-scoring wedge only.
 
 ## Current provisional recommendation
 
-Do the verification loop, but bias toward:
+Do the verification loop, but **do not let the product become kidney-only or organ-preservation-only by default**.
 
-> **Kidney NMP IRI/DGF Evidence Router**
+Preferred framing to test:
 
-Why:
-- has a directly relevant public GEO accession: GSE293480;
-- links ex-vivo NMP, transcriptomics, IRI, and delayed graft function;
-- naturally supports the macro/micro bridge;
-- stays honest if framed as mechanism/evidence routing, not prediction;
-- gives a precise demo case rather than generic BioSignal Navigator.
+> **Biomedical State Navigator** — an agent-human workflow for translating messy biological observations into mechanisms, evidence, candidate measurements, and uncertainty review.
 
-Fallback if dataset processing is too slow:
+Potential product categories to compare:
 
-> **Liver NMP Viability Criteria Navigator**
+1. **Ex-vivo biological state monitoring**
+   - perfused organs, organoids, tissue slices, tissue-engineering QC, organ-on-chip.
+   - Likely best balance of thesis fit + broader scope.
 
-Why:
-- literature has clearer marker discussions: lactate, pH, bile chemistry, transaminases, glucose, hemodynamics;
-- easier to build as evidence cards without raw data.
+2. **Translational biomarker / assay planning copilot**
+   - phenotype/anomaly → mechanism hypotheses → biomarkers/assays → evidence and caveats.
+   - Broader market, but needs a sharp demo to avoid genericness.
+
+3. **Machine perfusion evidence router**
+   - keep as a demo vertical, not necessarily the whole company/product.
+
+Best current demo candidates:
+
+- **Kidney NMP IRI/DGF demo** using GSE293480 if dataset access is fast.
+- **Tissue preservation/stability demo** using PRJEB31843 if it better supports broader ex-vivo state monitoring.
+- **Liver NMP criteria demo** if literature-grounded marker interpretation is more demoable than raw data.
+
+Decision rule:
+
+> Product category should be Level 2 or Level 3. Demo proof can be Level 0 or Level 1.
