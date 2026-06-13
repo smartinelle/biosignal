@@ -1,0 +1,8 @@
+{
+  "dataset": "Tissue Stability Cell Atlas",
+  "accession": "PRJEB31843",
+  "paper": "scRNA-seq assessment of human lung, spleen, and esophagus tissue stability after cold preservation",
+  "timepoints": ["0h", "12h", "24h", "72h"],
+  "preservation": "4C HypoThermosol FRS",
+  "key_claim": "Intact human tissue pieces can often be cold-preserved for at least 24h before scRNA-seq with limited quality impact; 72h shows more tissue/cell-type-specific degradation signals."
+}
