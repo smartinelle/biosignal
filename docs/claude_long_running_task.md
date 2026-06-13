@@ -40,11 +40,12 @@ The first demo vertical is living tissue systems: tissue preservation, organoids
 3. `docs/demo_script.md`
 4. `docs/venture_positioning.md`
 5. `docs/credentials_setup.md`
-6. `docs/plans/research-validation-loop.md`
-7. `docs/research/workflows-and-biomarkers.md`
-8. `docs/research/dataset-feasibility.md`
-9. `docs/research/evidence-matrix.md`
-10. `docs/research/feature-gates.md`
+6. `docs/pioneer_strategy.md`
+7. `docs/plans/research-validation-loop.md`
+8. `docs/research/workflows-and-biomarkers.md`
+9. `docs/research/dataset-feasibility.md`
+10. `docs/research/evidence-matrix.md`
+11. `docs/research/feature-gates.md`
 
 ## Priority A — Maintain and advance research/verification pipeline
 
@@ -138,13 +139,39 @@ Inspect current app and improve only if safe:
 - Ensure `Pioneer-style triples` look like a deliberate side-challenge artifact, not a hack.
 - Add or improve `docs/architecture.md`, `docs/partner_tech.md`, and `docs/submission_checklist.md` if missing.
 
-## Priority C — Partner integration scaffolding
+## Priority C — Pioneer side-challenge implementation
+
+Do **not** treat Pioneer as just another generic LLM provider if there is time to do better. The intended Pioneer use is a fine-tuned structured extractor that replaces a repeated frontier-LLM extraction call.
+
+Read `docs/pioneer_strategy.md`, then implement the safest subset.
+
+Preferred path:
+
+- Use Pioneer / Fastino GLiNER2 for structured extraction from messy experiment notes.
+- Target labels: macro signals, trends, sample context, candidate mechanisms, biomarkers/assays, uncertainty, safety-boundary flags.
+- Target relations: observation supports possible mechanism, measurement reduces uncertainty about mechanism, and must-not-claim safety boundaries.
+- If feasible, create a small synthetic dataset plan and eval harness for the fine-tuned model.
+- If no live fine-tune can be completed, still make the app and docs show the intended Pioneer artifact clearly with a deterministic fallback extractor.
+
+Success criterion for the side challenge:
+
+> Pioneer owns the deterministic structured-extraction layer. Gemini can synthesize, Tavily can retrieve evidence, humans review; Pioneer turns messy notes into stable observations/mechanisms/measurements/relations/safety flags.
+
+Implementation expectations:
+
+- Add or improve `app/agents/pioneer_extractor.py`.
+- Use `PIONEER_API_KEY` and `PIONEER_MODEL_ID` only if present.
+- Never require credentials for the demo path.
+- Surface status in the UI: `Pioneer: live fine-tuned model` or `Pioneer: fallback structured extractor`.
+- Do not hard-code undocumented endpoint shapes; check https://docs.pioneer.ai/introduction before live API calls.
+
+## Priority D — Partner integration scaffolding
 
 If time allows, add clean wrappers with fallbacks:
 
 - `app/llm.py` for Gemini
 - `app/search.py` for Tavily
-- `app/agents/pioneer_extractor.py` for Pioneer-style extraction/evaluation
+- `app/agents/pioneer_extractor.py` for Pioneer GLiNER2-style extraction/evaluation
 
 Important:
 

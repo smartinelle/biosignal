@@ -42,12 +42,12 @@ The app produces a troubleshooting memo with possible mechanisms such as hypoxia
 
 Required minimum: 3 partner technologies. This repo makes partner use visible in the product and docs.
 
-- **Google Gemini:** mechanism synthesis and final memo generation when `GEMINI_API_KEY` is configured.
-- **Tavily:** literature / source retrieval when `TAVILY_API_KEY` is configured.
-- **Pioneer:** structured signal → hypothesis → measurement triples; MVP shows transparent fallback triples for the side-challenge shape.
+- **Google Gemini:** caveated troubleshooting-memo synthesis. Works with a native Gemini key (`AIza...`) or via **OpenRouter** (`sk-or...`, auto-detected) — see `docs/partner_tech.md`.
+- **Tavily:** live literature / source retrieval for evidence cards when `TAVILY_API_KEY` is configured.
+- **Pioneer:** deterministic GLiNER2-style structured extractor (signal → hypothesis → measurement triples + safety flags). Runs with no key; goes live with `PIONEER_API_KEY` **and** a deployed `PIONEER_MODEL_ID`.
 - **Aikido:** security scan path for side challenge submission.
 
-The demo remains usable without API keys via deterministic fallbacks.
+The demo remains fully usable without API keys via deterministic fallbacks. When keys are present, the UI shows a 🟢 LIVE vs ⚪ Fallback badge per partner and an honest partner trace. See `docs/architecture.md`, `docs/partner_tech.md`, and `docs/submission_checklist.md`.
 
 ## Quick start
 

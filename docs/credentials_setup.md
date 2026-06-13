@@ -38,18 +38,38 @@ Implementation expectation:
 
 ### Pioneer / Fastino
 
-Purpose: side-challenge-visible structured extraction/evaluation: observation → failure hypothesis → next measurement triples.
+Purpose: side-challenge-visible fine-tuned structured extraction/evaluation. Pioneer should ideally replace a repeated generic LLM extraction call, not merely act as another chat provider.
 
-Environment variable:
+Recommended artifact:
+- fine-tune GLiNER2 on a narrow BioSignal Navigator task
+- extract observations, candidate mechanisms, assays/biomarkers, relations, uncertainty, and safety-boundary flags from messy experiment notes
+- compare against deterministic fallback and/or generic LLM extraction
+- show why a small deterministic model is faster, cheaper, stabler, and potentially local/private for sensitive biotech data
+
+Environment variables:
 
 ```bash
 PIONEER_API_KEY=...
+PIONEER_MODEL_ID=...
+```
+
+Optional, only if Pioneer docs require it:
+
+```bash
+PIONEER_BASE_URL=...
 ```
 
 Implementation expectation:
 - App must show Pioneer-style triples even without credentials.
-- With credentials, route extraction/evaluation through the provider if feasible.
+- With credentials and a deployed model id, route extraction/evaluation through the Pioneer model if feasible.
 - Document exactly what Pioneer replaces or improves vs a generic LLM call.
+- See `docs/pioneer_strategy.md` for the model task, label schema, synthetic data plan, eval plan, and submission narrative.
+
+Onboarding resources:
+- Platform: https://pioneer.ai/
+- Docs: https://docs.pioneer.ai/introduction
+- Discord support: https://discord.gg/yCG3FjXvfp
+- Hackathon promo code for Pro: `Munich2026HackPioneer`
 
 ## Side-prize / optional
 

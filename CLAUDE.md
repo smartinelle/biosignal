@@ -119,7 +119,7 @@ Required minimum: 3 partner technologies.
 Core:
 1. **Google Gemini** — synthesis, mechanism mapping, final evidence card.
 2. **Tavily** — literature/dataset search and source extraction.
-3. **Pioneer** — structured extractor/evaluator for observation → mechanism → biomarker triples.
+3. **Pioneer** — ideally a fine-tuned GLiNER2 structured extractor/evaluator for messy experiment notes → observations, mechanisms, biomarkers/assays, relations, uncertainty flags, and safety-boundary flags. Do not reduce Pioneer to a generic chat endpoint if there is time to build/evaluate the small-model path.
 
 Side prize:
 4. **Aikido** — security scan screenshot and clean repo.
@@ -154,7 +154,7 @@ Avoid merge conflicts. Each coding agent should own a narrow surface.
 - UI agent: `app/main.py`, `docs/demo_script.md`
 - Gemini/LLM agent: `app/llm.py`, `app/agents/mechanism_agent.py`, `app/agents/pipeline.py`
 - Tavily/evidence agent: `app/search.py`, `app/agents/evidence_agent.py`, `app/data/`
-- Pioneer agent: `app/agents/pioneer_extractor.py`, `data/triples_*`, `docs/partner_tech.md`
+- Pioneer agent: `app/agents/pioneer_extractor.py`, `data/triples_*`, `docs/pioneer_strategy.md`, `docs/partner_tech.md`
 - Docs/submission agent: `README.md`, `docs/architecture.md`, `docs/partner_tech.md`, `docs/submission_checklist.md`
 - Review agent: read-only review first; edit only after explicit handoff
 
