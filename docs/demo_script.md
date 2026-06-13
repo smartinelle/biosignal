@@ -1,13 +1,35 @@
 # 2-minute demo script
 
-0:00 Problem: Biomedical teams start with messy observations, but next action depends on hidden mechanisms.
+## 0:00–0:15 — Problem
 
-0:15 Product: BioSignal Navigator structures the observation, proposes mechanisms, retrieves evidence, suggests assays, and escalates uncertainty to a human.
+Biotech R&D teams lose days when experiments fail ambiguously. A living tissue system may show rising lactate, falling pH, morphology changes, or oxygen shifts, but the team still has to decide: is this hypoxia, mitochondrial stress, endothelial injury, protocol failure, toxicity, or something else?
 
-0:30 Demo: Enter cold-preserved tissue case with lactate rising, pH falling, resistance increasing.
+## 0:15–0:30 — Product
 
-1:00 Agent trace: Observation → Mechanism → Evidence → Assay → Human Review.
+BioSignal Navigator is an agent-human workspace for experiment troubleshooting. It turns messy readouts into failure hypotheses, evidence, next best measurements, and a human review question.
 
-1:30 Safety: not diagnosis or treatment; evidence routing and research workflow.
+## 0:30–1:15 — Demo
 
-1:45 Partner tech: Gemini for synthesis, Tavily for retrieval, Pioneer for structured extraction, Aikido for security scan.
+Use the **Living tissue preservation failure** preset.
+
+Show:
+
+1. Observation Agent structures the messy experiment note.
+2. Mechanism Agent proposes plausible failure modes.
+3. Evidence Agent attaches source-aware caveats.
+4. Measurement Agent recommends assays that reduce uncertainty.
+5. Human Review Agent escalates the unresolved scientific judgment.
+
+## 1:15–1:35 — Key differentiation
+
+Point to the **Uncertainty Bottleneck** section:
+
+> The product does not pretend to infer biological truth from surface signals. It identifies what cannot be known yet and chooses the next measurement that would discriminate between mechanisms.
+
+## 1:35–1:50 — Partner tech
+
+Gemini handles mechanism synthesis, Tavily retrieves evidence, Pioneer extracts structured signal → hypothesis → measurement triples, and Aikido secures the repo for the side challenge.
+
+## 1:50–2:00 — Close
+
+BioSignal Navigator is not clinical decision support. It is workflow software for biotech teams: when an experiment fails, it helps them choose the next best experiment faster.

@@ -58,18 +58,23 @@ Strategic product constraints:
 
 ## Current working product idea
 
-Current candidate: **BioSignal Navigator** — an agent-human evidence routing tool that turns messy biomedical observations into molecular hypotheses, evidence, suggested measurements, and a human review question.
+Current candidate: **BioSignal Navigator** — an agent-human troubleshooting workspace for biotech R&D teams when experiments produce ambiguous readouts.
+
+Core workflow:
+> experimental observations → failure hypotheses → evidence → next best measurements → human expert review
+
+The product is framed as **AI agents for biotech R&D**, not generic healthcare AI and not a narrow organ-preservation tool. The first demo vertical is **living tissue systems**: tissue preservation, organoids, organ-on-chip, and tissue engineering QC.
 
 This is **not fixed**. If the product idea changes, keep the hackathon context and Sacha thesis context above intact, then update this section and downstream implementation tasks.
 
-This is **not** a diagnostic, treatment, or clinical decision system. It is a research workflow / translational evidence-routing demo.
+This is **not** a diagnostic, treatment, or clinical decision system. It is a research workflow / experiment-troubleshooting demo.
 
 ## Track framing
 
 Primary current track fit: **Atira — Orchestrating Agents and Humans**.
 
 Core claim:
-> We help biomedical teams ask the right biological question faster by coordinating agents and humans around uncertainty.
+> We help biotech R&D teams debug ambiguous experiments and choose the next best measurement by coordinating agents and humans around uncertainty.
 
 Do not claim:
 - viability prediction
