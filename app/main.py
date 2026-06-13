@@ -46,5 +46,5 @@ if st.button("Run agent workflow", type="primary"):
 
     st.markdown("### Evidence and caveats")
     for e in result["evidence"]:
-        st.markdown(f"- **{e['source']}**: {e['claim']}  
-  Caveat: {e['caveat']}")
+        st.markdown(f"- **{e['source']}**: {e['claim']}")
+        st.caption(f"Caveat: {e['caveat']}")
