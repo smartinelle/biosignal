@@ -2,9 +2,74 @@
 
 > **For Hermes / Claude Code agents:** Use this as the coordination contract. Pick one workstream, stay inside the owned files, verify locally, and report exact files changed plus commands run.
 
+## Durable context before product details
+
+This plan serves a hackathon build whose **fixed context** is the {Tech: Europe} Munich AI Hackathon and Sacha's thesis direction. The current product concept is BioSignal Navigator, but the exact product may change. If it changes, preserve the hackathon/prize context and thesis context below, then update product-specific sections and workstreams.
+
+## Hackathon facts and prize landscape
+
+Event: **{Tech: Europe} Munich AI Hackathon**, Munich, at Tacto Office.
+
+Operational constraints:
+- Submit by **Sunday 14:00**.
+- Team size max **5**.
+- Use at least **3 partner technologies**.
+- Submit a **2-minute video demo** and a **public GitHub repo** with README, setup/install instructions, API/framework/tool docs, and enough technical explanation for judging.
+- Finalists pitch live for **5 minutes** after pre-selection.
+
+Judging / competition structure:
+- Stage 1: build anything aligned with creative vision; 5 finalists advance total: **3 Open Track winners** and **2 Track winners**.
+- Stage 1 judging criteria: **creativity**, **technical complexity**, plus bonus points for effective use of partner technologies.
+- Stage 2: finalist live pitches; top 3 win finalist-stage prizes.
+
+Tracks:
+- **Atira — Orchestrating Agents and Humans:** AirPods per team member. Challenge: build a useful layer for coordinating agents and humans at organizational scale. Strong fit for workflows with agent-to-agent-to-human interaction, long-running state, proactive unblocking, and human feedback loops.
+- **Kyrall — Turning a technical drawing into a 3D part:** AirPods per team member. Strong manufacturing/engineering fit, weaker thesis fit unless pivoting.
+- **Open Innovation:** 3 finalist-stage qualification slots. Broad fallback if a track-specific frame weakens the idea.
+
+Side challenges:
+- **Fastino / Pioneer:** 500€ for best use of Pioneer. They value replacing/outperforming a general LLM call, synthetic data generation, evaluation against frontier models, adaptive inference, and creative use of GLiNER2/Gemma 4.
+- **Aikido:** 1000€ for most secure build. Requires account, connecting repo, and screenshot of security report with issue count/categories. High expected value; include regardless.
+- **fal:** $1000 fal credits for best use of fal. Only target if generative media is a core feature; LLM endpoints alone do not count.
+
+Finalist-stage prizes:
+- 1st: **$5k Gemini credits + Pioneer Pro plan for 1 month**.
+- 2nd: **$2.5k Gemini credits + Pioneer Pro plan for 1 month**.
+- 3rd: **$1k Gemini credits + Pioneer Pro plan for 1 month**.
+
+Partner resources to incorporate where useful:
+- Google DeepMind / Gemini frontier models.
+- Pioneer by Fastino.
+- fal generative media.
+- Tavily real-time search/extraction/research/crawling.
+
+## Sacha thesis / inspiration context
+
+Sacha's thesis direction is **autonomous life-support / ex-vivo organ monitoring**, especially organ preservation, perfusion, tissue engineering, and biological state monitoring.
+
+The motivating distinction:
+- **Macro/clinical variables:** flow, pH, lactate, oxygenation, resistance, temperature, visual appearance, injury enzymes, surgical/clinical decision trees.
+- **Micro/molecular state:** hypoxia, mitochondrial stress, inflammatory activation, endothelial injury, apoptosis/necrosis, cell-type composition, transcriptomic/spatial degradation, tissue architecture.
+
+Thesis-relevant opportunity:
+> Build tools that help biomedical teams bridge observable macro signals and hidden biological state by routing evidence, proposing molecular mechanisms, recommending assays/measurements, and escalating uncertainty to humans.
+
+Hackathon artifact goal:
+- Create a **credible, sendable artifact** that compounds the thesis.
+- Demonstrate ambitious but honest founder-track taste.
+- Avoid generic AI-app energy; the demo should feel like it came from someone thinking seriously about tissue state, organ preservation, and translational biology.
+
+Strategic guardrails:
+- Do not overclaim macro → micro inference in a 1-day build.
+- Do not build or market this as diagnosis, treatment, transplant/discard recommendation, or clinical decision support.
+- Prefer research workflow language: evidence routing, hypothesis generation, measurement planning, uncertainty tracking, human review.
+- Keep the product broader than organ preservation if useful, but keep the first demo close to thesis domains: tissue preservation, tissue engineering QC, ex vivo perfusion, organoids/organ-on-chip, translational biomarker work.
+
+---
+
 ## Goal
 
-Build a credible 1-day hackathon MVP for **BioSignal Navigator**: an agent-human biomedical evidence-routing demo that maps messy observations to possible mechanisms, evidence, next measurements, and a human review question.
+Build a credible 1-day hackathon MVP for the **current working idea, BioSignal Navigator**: an agent-human biomedical evidence-routing demo that maps messy observations to possible mechanisms, evidence, next measurements, and a human review question. If the product idea changes, update this goal and downstream workstreams while preserving the durable context above.
 
 ## Architecture
 
