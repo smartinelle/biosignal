@@ -12,6 +12,8 @@ except Exception:  # noqa: BLE001
     pass
 
 from agents.pipeline import run_pipeline
+from agents.human_review import apply_human_feedback
+from agents.experiment_memory import build_experiment_memory, training_examples_from_memory
 try:
     from presets import PRESETS, PRESET_LABELS, PRESETS_BY_LABEL, get_note
 except ModuleNotFoundError:  # package import during verification
@@ -83,8 +85,14 @@ selected_preset = PRESETS_BY_LABEL.get(preset, PRESETS[0])
 observation = st.text_area("Ambiguous experiment observation", value=default_obs, height=190)
 st.caption(f"Selected workflow: {selected_preset['category']}")
 
+if "last_result" not in st.session_state:
+    st.session_state["last_result"] = None
+
 if st.button("Run agent workflow", type="primary"):
-    result = run_pipeline(observation)
+    st.session_state["last_result"] = run_pipeline(observation)
+
+result = st.session_state.get("last_result")
+if result:
 
     # 0. Product context — the research loop translated into the product now.
     context = result["workflow_context"]
@@ -109,6 +117,43 @@ if st.button("Run agent workflow", type="primary"):
                 st.markdown(f"**Goal:** {action['goal']}")
                 st.markdown(f"**Expected readout:** {action['expected_readout']}")
                 st.caption(f"Risk: {action['risk']}")
+
+    # 1b. Uncertainty map — turn ambiguity into a decision graph instead of an answer.
+    uncertainty_map = result["uncertainty_map"]
+    with st.container(border=True):
+        st.markdown("## 1b. Uncertainty map")
+        st.caption(uncertainty_map["copy"])
+        branch_cols = st.columns(min(3, len(uncertainty_map["branches"])))
+        for col, branch in zip(branch_cols, uncertainty_map["branches"]):
+            with col:
+                st.markdown(f"### {branch['hypothesis']}")
+                st.markdown(f"**Test:** {branch['test']}")
+                st.markdown(f"**Change-my-mind rule:** {branch['what_would_change_our_mind']}")
+                st.caption(branch["human_question"])
+        with st.expander("Decision graph source", expanded=False):
+            st.code(uncertainty_map["mermaid"], language="mermaid")
+
+    # 1c. Scientist Review Mode — visible human-in-the-loop controls.
+    with st.container(border=True):
+        st.markdown("## 1c. Scientist Review Mode")
+        st.caption("The human does not just receive an answer — they correct the agent trace. Those corrections become Pioneer training/eval signal.")
+        feedback_label_by_key = result["human_review_options"]
+        feedback_key = st.radio(
+            "Human feedback",
+            list(feedback_label_by_key.keys()),
+            format_func=lambda key: feedback_label_by_key[key],
+            horizontal=True,
+        )
+        feedback_note = st.text_input("Optional missing context / correction", placeholder="e.g. this cell line often shows edge sensitivity after thaw")
+        reviewed_plan = apply_human_feedback(action_plan, feedback_key, feedback_note)
+        st.session_state["reviewed_action_plan"] = reviewed_plan
+        st.info(reviewed_plan["human_decision"])
+        if reviewed_plan.get("human_feedback", {}).get("pioneer_training_event"):
+            st.success(reviewed_plan["human_feedback"]["why_pioneer_cares"])
+        reviewed_top = reviewed_plan["ranked_actions"][0]
+        st.markdown(f"**Reviewed top action:** {reviewed_top['title']} · confidence `{reviewed_top['confidence']}`")
+        if reviewed_top.get("human_note"):
+            st.caption(reviewed_top["human_note"])
 
     with st.container(border=True):
         st.markdown("### Partner-ready summary")
@@ -210,6 +255,35 @@ if st.button("Run agent workflow", type="primary"):
     with tri_right:
         st.markdown("**Relations (raw extractor output)**")
         st.json(pioneer["relations"])
+
+    # 6b. Experiment memory / Pioneer learning loop
+    reviewed_plan_for_memory = st.session_state.get("reviewed_action_plan", result["action_plan"])
+    memory = build_experiment_memory(result["structured_observations"], reviewed_plan_for_memory, pioneer)
+    training_examples = training_examples_from_memory(memory)
+    st.subheader("4b. Experiment memory / Pioneer learning loop")
+    st.caption(memory["learning_loop"])
+    m1, m2, m3, m4 = st.columns(4)
+    stats = memory["stats"]
+    m1.metric("Stored runs", stats["stored_runs"])
+    m2.metric("Accepted/resolved", stats["accepted_or_resolved"])
+    m3.metric("Pending/review", stats["pending_or_review_needed"])
+    m4.metric("Relations this run", stats["extracted_relations_this_run"])
+    st.dataframe(
+        [
+            {
+                "Source": run["source"],
+                "Workflow": run["workflow"],
+                "Ambiguous signal": run["ambiguous_signal"],
+                "Human branch": run["chosen_branch"],
+                "Status": run["status"],
+                "Pioneer value": run["pioneer_value"],
+            }
+            for run in memory["runs"]
+        ],
+        hide_index=True,
+    )
+    with st.expander("Example training rows produced from memory", expanded=False):
+        st.json(training_examples[:3])
 
     # 7. Partner technology trace with live/fallback status
     st.subheader("5. Partner technology trace")

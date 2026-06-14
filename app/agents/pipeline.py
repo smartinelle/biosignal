@@ -17,6 +17,8 @@ from .assay_agent import suggest_measurements
 from .human_review_agent import human_review_question
 from .pioneer_extractor import extract_troubleshooting_structure, pioneer_status
 from .action_plan import build_action_plan
+from .uncertainty_map import build_uncertainty_map
+from .experiment_memory import build_experiment_memory, training_examples_from_memory
 
 
 def _dual_import(package_name: str, flat_name: str):
@@ -204,6 +206,9 @@ def run_pipeline(raw_observation: str) -> dict:
         bottleneck,
         partner_trace,
     )
+    uncertainty_map = build_uncertainty_map(structured, hypotheses, measurements, evidence, bottleneck)
+    experiment_memory = build_experiment_memory(structured, action_plan, pioneer)
+    pioneer_training_examples = training_examples_from_memory(experiment_memory)
 
     return {
         "structured_observations": structured,
@@ -217,6 +222,16 @@ def run_pipeline(raw_observation: str) -> dict:
         "pioneer_structured": pioneer,
         "synthesis": synthesis,
         "action_plan": action_plan,
+        "uncertainty_map": uncertainty_map,
+        "human_review_options": {
+            "accept_next_action": "Accept next action",
+            "ask_faster_alternative": "Ask for cheaper / faster alternative",
+            "flag_top_hypothesis_implausible": "Flag top hypothesis as implausible",
+            "add_missing_context": "Add missing context",
+            "mark_overclaiming": "Mark as overclaiming / unsafe",
+        },
+        "experiment_memory": experiment_memory,
+        "pioneer_training_examples": pioneer_training_examples,
         "integration_status": {
             "pioneer": pioneer_status(),
             "gemini": {"mode": synthesis.get("mode")},
