@@ -36,9 +36,9 @@ class PioneerExtractorTests(unittest.TestCase):
         self.assertEqual(kwargs["json"]["text"], "lactate rising, pH falling")
         self.assertIn("schema", kwargs["json"])
         self.assertIn("entities", kwargs["json"]["schema"])
-        self.assertIn("classifications", kwargs["json"]["schema"])
-        self.assertIn("relations", kwargs["json"]["schema"])
-        self.assertEqual(kwargs["json"]["threshold"], 0.35)
+        # Inference endpoint only needs entities; classifications/relations
+        # are training-time schema and are not sent at inference time.
+        self.assertNotIn("threshold", kwargs["json"])
 
     def test_api_key_alone_enables_base_gliner2_live_mode(self):
         os.environ["PIONEER_API_KEY"] = "test-key"
@@ -57,15 +57,17 @@ class PioneerExtractorTests(unittest.TestCase):
         response = Mock()
         response.raise_for_status.return_value = None
         response.json.return_value = {
-            "entities": [
-                {"text": "lactate", "label": "macro_signal", "score": 0.91},
-                {"text": "rising", "label": "trend", "score": 0.88},
-                {"text": "hypoxia", "label": "candidate_mechanism", "score": 0.77},
-                {"text": "oxygen consumption", "label": "assay", "score": 0.73},
-            ],
-            "classifications": [
-                {"task": "safety", "label": "research_workflow_only", "score": 0.97}
-            ],
+            "result": {
+                "data": {
+                    "entities": {
+                        "macro_signal": [{"text": "lactate", "confidence": 0.91, "start": 0, "end": 7}],
+                        "trend": [{"text": "rising", "confidence": 0.88, "start": 8, "end": 14}],
+                        "candidate_mechanism": [{"text": "hypoxia", "confidence": 0.77, "start": 16, "end": 23}],
+                        "assay": [{"text": "oxygen consumption", "confidence": 0.73, "start": 25, "end": 44}],
+                        "safety_boundary": [{"text": "organ viable for transplant", "confidence": 0.85, "start": 46, "end": 73}],
+                    },
+                },
+            },
         }
 
         with patch("requests.post", return_value=response):

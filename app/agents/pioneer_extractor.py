@@ -25,17 +25,13 @@ import re
 _DEFAULT_PIONEER_MODEL = "fastino/gliner2-base-v1"
 
 _PIONEER_SCHEMA = {
-    "entities": [
-        "macro_signal",
-        "trend",
-        "sample_context",
-        "time_context",
-        "candidate_mechanism",
-        "biomarker",
-        "assay",
-        "uncertainty",
-        "safety_boundary",
-    ],
+    "entities": {
+        "macro_signal": "A measurable physiological or biochemical signal in tissue or organ monitoring",
+        "trend": "Direction of change of a signal over time: rising, falling, stable, fluctuating",
+        "candidate_mechanism": "A hypothesized biological mechanism explaining observed signals",
+        "assay": "An experimental measurement or test that could discriminate between mechanisms",
+        "safety_boundary": "A clinical claim, threshold, or decision that may be an overclaim or safety concern",
+    },
     "classifications": [
         {
             "task": "safety",
@@ -302,41 +298,70 @@ def _normalize_live_payload(note: str, payload: dict, skeleton: dict) -> dict:
     function accepts common documented fields while retaining deterministic
     fallback values when the model returns sparse output.
     """
+    # Pioneer returns entities as {type_name: [{text, confidence, start, end}, ...]}
     raw_entities = payload.get("entities")
     raw_classifications = payload.get("classifications")
     raw_relations = payload.get("relations")
-    entities: list = raw_entities if isinstance(raw_entities, list) else []
-    classifications: list = raw_classifications if isinstance(raw_classifications, list) else []
-    relations: list = raw_relations if isinstance(raw_relations, list) else []
 
     live_observations = []
     live_mechanisms = []
     live_measurements = []
+    live_safety = []
     pending_trends: list[tuple[str, float]] = []
 
-    for entity in entities:
-        if not isinstance(entity, dict):
-            continue
-        entity_type = str(entity.get("label") or entity.get("type") or entity.get("entity") or "")
-        text = str(entity.get("text") or entity.get("value") or entity.get("span") or "").strip()
-        if not text:
-            continue
-        confidence = _score(entity)
-        canonical = _canonical_label(text)
-        if entity_type == "macro_signal":
-            live_observations.append({"label": canonical, "trend": "reported", "confidence": confidence})
-        elif entity_type == "trend":
-            pending_trends.append((text.lower(), confidence))
-        elif entity_type == "candidate_mechanism":
-            live_mechanisms.append({"label": canonical, "confidence": confidence})
-        elif entity_type in {"assay", "biomarker"}:
-            live_measurements.append({"label": canonical, "confidence": confidence})
+    if isinstance(raw_entities, dict):
+        # New format: {entity_type: [{text, confidence, ...}, ...]}
+        for entity_type, items in raw_entities.items():
+            if not isinstance(items, list):
+                continue
+            for entity in items:
+                if not isinstance(entity, dict):
+                    continue
+                text = str(entity.get("text") or entity.get("value") or "").strip()
+                if not text:
+                    continue
+                confidence = _score(entity)
+                canonical = _canonical_label(text)
+                if entity_type == "macro_signal":
+                    live_observations.append({"label": canonical, "trend": "reported", "confidence": confidence})
+                elif entity_type == "trend":
+                    pending_trends.append((text.lower(), confidence))
+                elif entity_type == "candidate_mechanism":
+                    live_mechanisms.append({"label": canonical, "confidence": confidence})
+                elif entity_type in {"assay", "biomarker"}:
+                    live_measurements.append({"label": canonical, "confidence": confidence})
+                elif entity_type == "safety_boundary":
+                    live_safety.append({"text": text, "confidence": confidence})
+    elif isinstance(raw_entities, list):
+        # Legacy format: flat list of entity dicts
+        for entity in raw_entities:
+            if not isinstance(entity, dict):
+                continue
+            entity_type = str(entity.get("label") or entity.get("type") or entity.get("entity") or "")
+            text = str(entity.get("text") or entity.get("value") or entity.get("span") or "").strip()
+            if not text:
+                continue
+            confidence = _score(entity)
+            canonical = _canonical_label(text)
+            if entity_type == "macro_signal":
+                live_observations.append({"label": canonical, "trend": "reported", "confidence": confidence})
+            elif entity_type == "trend":
+                pending_trends.append((text.lower(), confidence))
+            elif entity_type == "candidate_mechanism":
+                live_mechanisms.append({"label": canonical, "confidence": confidence})
+            elif entity_type in {"assay", "biomarker"}:
+                live_measurements.append({"label": canonical, "confidence": confidence})
 
+    # Attach the highest-confidence trend to observations that lack one
     if pending_trends and live_observations:
-        trend, trend_confidence = pending_trends[0]
-        trend_label = _TREND_WORDS.get(trend, _canonical_label(trend))
-        live_observations[0]["trend"] = trend_label
-        live_observations[0]["confidence"] = max(live_observations[0].get("confidence", 0), _round(trend_confidence))
+        for trend_text, trend_conf in pending_trends:
+            trend_label = _TREND_WORDS.get(trend_text, _canonical_label(trend_text))
+            # Find first observation still carrying the default "reported" trend
+            for obs in live_observations:
+                if obs["trend"] == "reported":
+                    obs["trend"] = trend_label
+                    obs["confidence"] = max(obs.get("confidence", 0), _round(trend_conf))
+                    break
 
     if live_observations:
         skeleton["observations"] = live_observations
@@ -344,8 +369,12 @@ def _normalize_live_payload(note: str, payload: dict, skeleton: dict) -> dict:
         skeleton["candidate_mechanisms"] = live_mechanisms
     if live_measurements:
         skeleton["suggested_measurements"] = live_measurements
-    if relations:
-        skeleton["relations"] = relations
+    if live_safety:
+        skeleton["safety_flags"]["clinical_claim_risk"] = True
+        skeleton["live_safety_extractions"] = live_safety
+
+    if isinstance(raw_relations, list) and raw_relations:
+        skeleton["relations"] = raw_relations
     elif live_observations or live_mechanisms or live_measurements:
         skeleton["relations"] = _extract_relations(
             skeleton["observations"],
@@ -353,14 +382,15 @@ def _normalize_live_payload(note: str, payload: dict, skeleton: dict) -> dict:
             skeleton["suggested_measurements"],
         )
 
-    safety_flags = skeleton["safety_flags"]
-    for classification in classifications:
-        if not isinstance(classification, dict):
-            continue
-        label = str(classification.get("label") or classification.get("class") or "")
-        score = _score(classification, default=0.0)
-        if label in safety_flags and score >= 0.5:
-            safety_flags[label] = True
+    if isinstance(raw_classifications, list):
+        safety_flags = skeleton["safety_flags"]
+        for classification in raw_classifications:
+            if not isinstance(classification, dict):
+                continue
+            label = str(classification.get("label") or classification.get("class") or "")
+            score = _score(classification, default=0.0)
+            if label in safety_flags and score >= 0.5:
+                safety_flags[label] = True
 
     return skeleton
 
@@ -475,19 +505,31 @@ def _live_extract(note: str) -> dict | None:
     try:
         import requests
 
+        # Build the inference-only schema (entities as dict[str,str] —
+        # Pioneer /inference requires this exact shape; classifications and
+        # relations are inference-time hints the model doesn't use).
+        inference_schema = {
+            "entities": _PIONEER_SCHEMA["entities"],
+        }
+
         response = requests.post(
             f"{base_url.rstrip('/')}/inference",
             headers={"X-API-Key": api_key, "Content-Type": "application/json"},
             json={
                 "model_id": model_id,
                 "text": note,
-                "schema": _PIONEER_SCHEMA,
-                "threshold": 0.35,
+                "schema": inference_schema,
             },
             timeout=12,
         )
         response.raise_for_status()
-        payload = response.json()
+        raw = response.json()
+        # Unwrap the nested Pioneer envelope: result.data.{entities, ...}
+        payload = raw
+        result = raw.get("result", {})
+        data = result.get("data", {}) if isinstance(result, dict) else {}
+        if data:
+            payload = data
     except Exception:
         return None
 
