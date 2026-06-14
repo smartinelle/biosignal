@@ -29,8 +29,6 @@ except ModuleNotFoundError:  # package import during verification
 
 st.set_page_config(page_title="BioSignal Navigator", page_icon="🧬", layout="centered")
 
-DEFAULT_NOTE = PRESETS[0]["note"]
-
 
 def _api_keys() -> dict:
     return {
@@ -40,8 +38,12 @@ def _api_keys() -> dict:
     }
 
 
-def _set_note(text: str) -> None:
-    st.session_state.note = text
+def _load_example() -> None:
+    label = st.session_state.get("example_pick")
+    for preset in PRESETS:
+        if preset["label"] == label:
+            st.session_state.note = preset["note"]
+            return
 
 
 # --------------------------------------------------------------------------- #
@@ -80,24 +82,31 @@ st.caption(
 # --------------------------------------------------------------------------- #
 # 1 · Input
 # --------------------------------------------------------------------------- #
-if "note" not in st.session_state:
-    st.session_state.note = DEFAULT_NOTE
-
-st.markdown("##### 1 · Describe what happened")
-st.caption("Plain lab language: what ran, what looked off, and the decision you're stuck on. Or load an example:")
-
-chip_cols = st.columns(4) + st.columns(4)
-for col, preset in zip(chip_cols, PRESETS):
-    col.button(
-        preset["label"],
-        key=f"ex_{preset['key']}",
-        on_click=_set_note,
-        args=(preset["note"],),
-        use_container_width=True,
+with st.container(border=True):
+    st.markdown("##### 1 · Describe your experiment")
+    st.caption("Plain lab language — what ran, what looked off, what changed recently, and the decision you're stuck on.")
+    st.pills(
+        "Load an example",
+        options=[p["label"] for p in PRESETS],
+        selection_mode="single",
+        key="example_pick",
+        on_change=_load_example,
+        help="Click to load a ready-made case, then edit it or run as-is.",
     )
-
-st.text_area("Experiment note", key="note", height=160, label_visibility="collapsed")
-analyze = st.button("Analyze experiment  →", type="primary", use_container_width=True)
+    st.text_area(
+        "Experiment note",
+        key="note",
+        height=170,
+        label_visibility="collapsed",
+        placeholder=(
+            "e.g. Potency assay signal dropped ~40% after a reagent-lot change. "
+            "Positive control drifted, edge wells look worse, cell count is normal. "
+            "Decide whether it's biology, protocol drift, reagent failure, or a plate "
+            "artifact before repeating the study."
+        ),
+    )
+    st.caption("💡 Tip: include anything that changed recently — reagent lot, operator, media, temperature, or timing.")
+    analyze = st.button("Analyze experiment  →", type="primary", use_container_width=True)
 
 if analyze and st.session_state.note.strip():
     with st.spinner("Agents working: structure → hypotheses → evidence → next measurement…"):
@@ -150,10 +159,15 @@ if result:
             head = e["source"] + ("  ·  🟢 live (Tavily)" if e.get("live") else "")
             st.markdown(f"**{head}**")
             st.write(e["claim"])
-            st.caption(
+            meta = (
                 f"`{e.get('evidence_type', '—')}` · relevance `{e.get('relevance', '—')}` "
                 f"· strength `{e.get('strength', '?')}/5`"
             )
+            if e.get("source_tier"):
+                meta += f" · {e['source_tier']}"
+            if e.get("relevance_score") is not None:
+                meta += f" · Tavily score `{e['relevance_score']}`"
+            st.caption(meta)
             if e.get("url"):
                 st.markdown(f"[Open source ↗]({e['url']})")
             st.caption(f"⚠️ {e['caveat']}")
