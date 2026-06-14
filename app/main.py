@@ -1,13 +1,14 @@
-"""BioSignal Navigator — guided, multi-screen troubleshooting workflow.
+"""BioSignal Navigator — guided decision-tree investigation.
 
-The app is a progressive wizard, not a single scroll. The operator always knows
-the next step:
+The agents generate a full multi-node decision tree upfront for the chosen
+workflow (ex-vivo tissue preservation). The operator advances it by recording the
+outcome of each discriminating measurement; the tree updates live and narrows —
+through multiple branching decision nodes — until it reaches a concrete resolution.
 
-    ① Describe  →  ② Diagnose & decide  →  ③ Enter results  →  ④ Next action  ↺
+    Setup  →  Investigate (decision node → record outcome → next node …)  →  Resolution
 
-Each loop is input → human-mediated decision → input → human-mediated decision.
-Evidence/literature and the agent/partner machinery are supporting screens reached
-from the sidebar, never the main content.
+Evidence/literature is shown inline at each decision and aggregated on a reference
+screen; the agent/partner machinery lives on the "How it worked" screen.
 """
 
 import os
@@ -15,7 +16,6 @@ from pathlib import Path
 
 import streamlit as st
 
-# Load .env before reading partner keys (safe no-op without python-dotenv/.env).
 try:
     from dotenv import load_dotenv
 
@@ -24,65 +24,39 @@ except Exception:  # noqa: BLE001
     pass
 
 from agents.pipeline import run_pipeline
-from agents.outcome_loop import apply_run_outcome
 
 try:
-    from presets import PRESETS
     import store
+    from decision_tree import get_workflow, is_terminal
 except ModuleNotFoundError:  # package import during verification
-    from app.presets import PRESETS
     from app import store
+    from app.decision_tree import get_workflow, is_terminal
 
 
 st.set_page_config(page_title="BioSignal Navigator", page_icon="🧬", layout="centered")
 
-# Ordered workflow screens (the 4-step loop) and the always-available reference screens.
-STEPS = [
-    ("describe", "1 · Describe"),
-    ("decide", "2 · Diagnose & decide"),
-    ("results", "3 · Enter results"),
-    ("next", "4 · Next action"),
-]
+STEPS = [("describe", "1 · Setup"), ("investigate", "2 · Investigate")]
 REFS = [
     ("tree", "🌳 Decision tree"),
     ("evidence", "📚 Evidence & resources"),
     ("dataset", "🗄️ Training data"),
     ("how", "🔧 How it worked"),
 ]
-STEP_IDS = [s[0] for s in STEPS]
-LABELS = {sid: lbl for sid, lbl in STEPS + REFS}
-
-OUTCOME_LABELS = {
-    "confirmed_branch": "✅ Confirmed this explanation",
-    "weakened_branch": "❌ Weakened this explanation",
-    "inconclusive": "➖ Inconclusive",
-    "new_anomaly_found": "⚠️ Found a new anomaly",
-}
 
 
 # --------------------------------------------------------------------------- #
-# State helpers
+# State
 # --------------------------------------------------------------------------- #
 def _init_state() -> None:
     st.session_state.setdefault("screen", "describe")
-    st.session_state.setdefault("result", None)
-    st.session_state.setdefault("outcome", None)
-    st.session_state.setdefault("chosen_branch_idx", 0)
-    st.session_state.setdefault("round", 1)
-    st.session_state.setdefault("history", [])
-    st.session_state.setdefault("note", "")
+    st.session_state.setdefault("result", None)   # pipeline output (live partner evidence/memo)
+    st.session_state.setdefault("tree", None)
+    st.session_state.setdefault("current_node", None)
+    st.session_state.setdefault("path", [])        # [{node, key, edge, question, label}]
 
 
 def go(screen: str) -> None:
     st.session_state.screen = screen
-
-
-def _load_example() -> None:
-    label = st.session_state.get("example_pick")
-    for preset in PRESETS:
-        if preset["label"] == label:
-            st.session_state.note = preset["note"]
-            return
 
 
 def _api_keys() -> dict:
@@ -93,341 +67,232 @@ def _api_keys() -> dict:
     }
 
 
-def _run_analysis(note: str) -> None:
-    with st.spinner("Agents working: structure → hypotheses → evidence → next measurement…"):
-        st.session_state.result = run_pipeline(note)
-    st.session_state.outcome = None
-    st.session_state.chosen_branch_idx = 0
-    st.session_state.screen = "decide"
+def _start_investigation(workflow: dict) -> None:
+    with st.spinner("Agents generating the decision tree and pulling supporting evidence…"):
+        st.session_state.result = run_pipeline(workflow["context"])
+    st.session_state.tree = workflow
+    st.session_state.current_node = workflow["root"]
+    st.session_state.path = []
+    st.session_state.screen = "investigate"
+
+
+def _decide(tree: dict, current: str, node: dict, opt: dict) -> None:
+    nxt = tree["nodes"][opt["next"]]
+    what_next = nxt["resolution"]["headline"] if is_terminal(nxt) else nxt["question"]
+    training_row = {
+        "input": {"workflow": tree["title"], "node": node["question"], "measurement": node["test"]},
+        "labels": {"decision": opt["key"], "outcome": opt["label"], "next": what_next, "human_review_required": True},
+    }
+    store.record_event(
+        round=len(st.session_state.path) + 1,
+        domain=tree["id"],
+        tested_branch=node["question"],
+        outcome=opt["key"],
+        outcome_note=opt["label"],
+        what_next=what_next,
+        training_row=training_row,
+    )
+    st.session_state.path.append({
+        "node": current, "key": opt["key"], "edge": opt["edge"],
+        "question": node["question"], "label": opt["label"],
+    })
+    st.session_state.current_node = opt["next"]
 
 
 # --------------------------------------------------------------------------- #
-# Decision tree (rendered as a real graph)
+# Decision tree rendering
 # --------------------------------------------------------------------------- #
 def _esc(text: str) -> str:
     return str(text).replace('"', "'").replace("\n", " ")
 
 
-def _decision_dot(result: dict, chosen_idx: int, outcome: dict | None) -> str:
-    branches = result["uncertainty_map"]["branches"]
-    updates = (outcome or {}).get("branch_updates", [])
-    signals = ", ".join(result["structured_observations"].get("signals_detected", [])[:4]) or "ambiguous readout"
+def _short(text: str, n: int) -> str:
+    text = str(text)
+    return text if len(text) <= n else text[: n - 1] + "…"
+
+
+def _tree_dot(tree: dict, current: str, chosen: dict) -> str:
+    nodes = tree["nodes"]
+    visited = set(chosen.keys())
     lines = [
         "digraph G {",
-        'rankdir=LR; bgcolor="transparent"; pad=0.2;',
-        'node [shape=box style="rounded,filled" fontname="Helvetica" fontsize=10 color="#cbd5e1" fillcolor="#ffffff"];',
-        'edge [color="#94a3b8"];',
-        f'root [label="Observation\\n{_esc(signals)}" fillcolor="#e8eefc" color="#6b8afd"];',
+        'rankdir=LR; bgcolor="transparent"; pad=0.2; nodesep=0.3; ranksep=0.5;',
+        'node [shape=box style="rounded,filled" fontname="Helvetica" fontsize=9 color="#cbd5e1" fillcolor="#ffffff"];',
+        'edge [color="#cbd5e1" fontname="Helvetica" fontsize=8 fontcolor="#64748b"];',
     ]
-    for i, b in enumerate(branches):
-        upd = updates[i] if i < len(updates) else {}
-        conf = upd.get("new_confidence")
-        status = upd.get("status")
+    for nid, node in nodes.items():
+        terminal = is_terminal(node)
+        label = node["resolution"]["headline"] if terminal else node["question"]
         fill, border = "#ffffff", "#cbd5e1"
-        if i == chosen_idx:
-            fill, border = "#e8eefc", "#6b8afd"
-        if status == "reinforced":
+        if nid in visited:
             fill, border = "#e7f6ec", "#3fa95b"
-        elif status == "weakened":
-            fill, border = "#fdeaea", "#d64545"
-        label = _esc(b["hypothesis"])
-        if conf is not None:
-            label += f"\\nconfidence {conf}"
-        lines.append(f'b{i} [label="{label}" fillcolor="{fill}" color="{border}"];')
-        lines.append(f'b{i}_t [label="Test\\n{_esc(b["test"])}" shape=note fillcolor="#fafafa"];')
-        lines.append(f"root -> b{i};")
-        lines.append(f"b{i} -> b{i}_t;")
+        if nid == current:
+            fill, border = (("#e7f6ec", "#3fa95b") if terminal else ("#e8eefc", "#6b8afd"))
+        shape = "note" if terminal else "box"
+        lines.append(f'{nid} [label="{_esc(_short(label, 42))}" shape={shape} fillcolor="{fill}" color="{border}"];')
+    for nid, node in nodes.items():
+        for opt in node.get("options", []):
+            on_path = chosen.get(nid) == opt["key"]
+            color = "#3fa95b" if on_path else "#cbd5e1"
+            penwidth = "2" if on_path else "1"
+            lines.append(
+                f'{nid} -> {opt["next"]} [label="{_esc(_short(opt["edge"], 18))}" color="{color}" penwidth={penwidth}];'
+            )
     lines.append("}")
     return "\n".join(lines)
 
 
-def _render_tree(result: dict) -> None:
-    dot = _decision_dot(result, st.session_state.chosen_branch_idx, st.session_state.outcome)
+def _render_tree() -> None:
+    tree = st.session_state.tree
+    chosen = {p["node"]: p["key"] for p in st.session_state.path}
+    dot = _tree_dot(tree, st.session_state.current_node, chosen)
     try:
         st.graphviz_chart(dot, use_container_width=True)
-    except Exception:  # noqa: BLE001 - never break the page on a render issue
-        for i, b in enumerate(result["uncertainty_map"]["branches"]):
-            st.markdown(f"- **{b['hypothesis']}** → _test:_ {b['test']}")
+    except Exception:  # noqa: BLE001
+        st.markdown("\n".join(f"- {n.get('question', n.get('resolution', {}).get('headline',''))}"
+                              for n in tree["nodes"].values()))
 
 
 # --------------------------------------------------------------------------- #
-# Sidebar — navigation + status
+# Sidebar
 # --------------------------------------------------------------------------- #
 def _sidebar() -> None:
-    has_result = st.session_state.result is not None
+    started = st.session_state.tree is not None
     cur = st.session_state.screen
     with st.sidebar:
         st.markdown("## 🧬 BioSignal")
-        if has_result:
-            step_n = (STEP_IDS.index(cur) + 1) if cur in STEP_IDS else "—"
-            st.caption(f"Investigation round {st.session_state.round} · step {step_n} of 4")
+        if started:
+            done = len(st.session_state.path)
+            node = st.session_state.tree["nodes"][st.session_state.current_node]
+            status = "resolved ✅" if is_terminal(node) else "in progress"
+            st.caption(f"Decisions recorded: {done} · {status}")
         st.markdown("**Workflow**")
         for sid, label in STEPS:
-            disabled = (sid != "describe") and not has_result
-            st.button(
-                label, key=f"nav_{sid}", on_click=go, args=(sid,),
-                use_container_width=True,
-                type="primary" if cur == sid else "secondary",
-                disabled=disabled,
-            )
+            disabled = (sid == "investigate") and not started
+            st.button(label, key=f"nav_{sid}", on_click=go, args=(sid,), use_container_width=True,
+                      type="primary" if cur == sid else "secondary", disabled=disabled)
         st.markdown("**Reference**")
         for sid, label in REFS:
-            st.button(
-                label, key=f"nav_{sid}", on_click=go, args=(sid,),
-                use_container_width=True,
-                type="primary" if cur == sid else "secondary",
-                disabled=not has_result,
-            )
+            st.button(label, key=f"nav_{sid}", on_click=go, args=(sid,), use_container_width=True,
+                      type="primary" if cur == sid else "secondary", disabled=not started)
         st.divider()
         keys = _api_keys()
         st.caption("Live integrations")
         st.caption(" · ".join(f"{'🟢' if v else '⚪'} {k}" for k, v in keys.items()))
-        if not any(keys.values()):
-            st.caption("Offline demo mode (curated data + real references).")
         st.divider()
         st.caption("Research troubleshooting only — not diagnosis, treatment, or clinical decision support. Human review required.")
 
 
-def _breadcrumb() -> None:
-    cur = st.session_state.screen
-    parts = []
-    for i, (sid, label) in enumerate(STEPS):
-        name = label.split(" · ")[1]
-        if sid == cur:
-            parts.append(f"**{i + 1}·{name}**")
-        else:
-            parts.append(f"{i + 1}·{name}")
-    st.caption("  ›  ".join(parts))
+def _papers(evidence: list[dict]) -> None:
+    if not evidence:
+        return
+    st.markdown("📚 **Supporting papers**")
+    for e in evidence:
+        tier = f" · {e['tier']}" if e.get("tier") else ""
+        link = f" — [open ↗]({e['url']})" if e.get("url") else ""
+        st.markdown(f"- {e['source']}{tier}{link}")
 
 
 # --------------------------------------------------------------------------- #
 # Screens
 # --------------------------------------------------------------------------- #
 def screen_describe() -> None:
-    _breadcrumb()
-    st.subheader("Describe your experiment")
+    st.subheader("Start an investigation")
+    wf = get_workflow("tissue_preservation")
     with st.container(border=True):
-        st.caption("Plain lab language — what ran, what looked off, what changed recently, and the decision you're stuck on.")
-        st.pills(
-            "Load an example",
-            options=[p["label"] for p in PRESETS],
-            selection_mode="single",
-            key="example_pick",
-            on_change=_load_example,
-            help="Click to load a ready-made case, then edit it or run as-is.",
+        st.markdown(f"### {wf['title']}")
+        st.write(wf["context"])
+        st.caption(
+            "The agents generate the full decision tree upfront. You advance it by recording the "
+            "outcome of each measurement; the tree updates live until it reaches a resolution."
         )
-        st.text_area(
-            "Experiment note", key="note", height=170, label_visibility="collapsed",
-            placeholder=(
-                "e.g. Potency assay signal dropped ~40% after a reagent-lot change. "
-                "Positive control drifted, edge wells look worse, cell count is normal. "
-                "Decide whether it's biology, protocol drift, reagent failure, or a plate artifact."
-            ),
-        )
-        st.caption("💡 Tip: include anything that changed recently — reagent lot, operator, media, temperature, or timing.")
-    if st.button("Analyze experiment  →", type="primary", use_container_width=True):
-        if not st.session_state.note.strip():
-            st.warning("Add a short experiment note first (or load an example).")
-        else:
-            st.session_state.round = 1
-            st.session_state.history = []
-            _run_analysis(st.session_state.note)
+    if st.button("▶ Generate investigation plan & start", type="primary", use_container_width=True):
+        _start_investigation(wf)
+        st.rerun()
+
+
+def screen_investigate() -> None:
+    tree = st.session_state.tree
+    if tree is None:
+        st.info("Start an investigation first.")
+        st.button("← Go to Setup", on_click=go, args=("describe",))
+        return
+
+    current = st.session_state.current_node
+    node = tree["nodes"][current]
+    st.subheader(tree["title"])
+    done = len(st.session_state.path)
+    st.caption(f"Decision {done + (0 if is_terminal(node) else 1)} · {done} recorded · "
+               f"{'resolved ✅' if is_terminal(node) else 'in progress'}")
+
+    _render_tree()
+
+    if is_terminal(node):
+        res = node["resolution"]
+        st.success(f"🏁 **{res['headline']}**")
+        with st.container(border=True):
+            st.markdown(f"**Leading mechanism:** {res['leading_mechanism']}")
+            st.markdown(f"**Confirmatory assay:** {res['confirmatory_assay']}")
+            if res.get("molecular_targets"):
+                st.markdown("**Molecular targets to verify:** " + ", ".join(res["molecular_targets"]))
+            st.warning(f"🧑‍🔬 Human review: {res['human_review']}", icon="⚠️")
+        c1, c2 = st.columns(2)
+        if st.session_state.path:
+            if c1.button("↩ Revise last decision", use_container_width=True):
+                last = st.session_state.path.pop()
+                st.session_state.current_node = last["node"]
+                st.rerun()
+        if c2.button("Start new investigation", use_container_width=True):
+            st.session_state.path = []
+            st.session_state.current_node = tree["root"]
+            st.rerun()
+        return
+
+    # Active decision node
+    st.markdown(f"### ❓ {node['question']}")
+    with st.container(border=True):
+        st.markdown(f"**Run this measurement:** {node['test']}")
+        _papers(node.get("evidence", []))
+
+    st.markdown("**Record the outcome to advance the tree:**")
+    for opt in node["options"]:
+        if st.button(opt["label"], key=f"opt_{current}_{opt['key']}", use_container_width=True):
+            _decide(tree, current, node, opt)
+            st.rerun()
+    if st.session_state.path:
+        if st.button("↩ Revise last decision"):
+            last = st.session_state.path.pop()
+            st.session_state.current_node = last["node"]
             st.rerun()
 
 
-def screen_decide() -> None:
-    result = st.session_state.result
-    if result is None:
-        st.info("Start by describing an experiment.")
-        st.button("← Go to step 1", on_click=go, args=("describe",))
-        return
-
-    _breadcrumb()
-    st.subheader("Diagnose & decide")
-
-    actions = result["action_plan"]["ranked_actions"]
-    branches = result["uncertainty_map"]["branches"]
-    top = actions[0] if actions else {}
-    if top:
-        st.success(f"**Recommended next measurement:** {top['title']}\n\n{top.get('goal','')}", icon="🎯")
-
-    st.markdown("**Decision tree** — which explanation is worth testing next?")
-    _render_tree(result)
-
-    st.markdown("**Your decision:** pick the explanation you'll test next.")
-    idx = st.radio(
-        "Explanation to test",
-        options=list(range(len(branches))),
-        index=min(st.session_state.chosen_branch_idx, max(0, len(branches) - 1)),
-        format_func=lambda i: branches[i]["hypothesis"],
-        label_visibility="collapsed",
-    )
-    st.session_state.chosen_branch_idx = idx
-    b = branches[idx]
-    with st.container(border=True):
-        st.markdown(f"**Test:** {b['test']}")
-        st.caption(f"Why plausible: {b['why_plausible']}")
-        st.caption(f"What would change our mind: {b['what_would_change_our_mind']}")
-
-    # Keep the literature that motivates the decision visible inline (not hidden).
-    evidence = result.get("evidence", [])
-    if evidence:
-        st.markdown(f"📚 **Supporting papers** ({len(evidence)})")
-        for e in evidence[:2]:
-            tier = f" · {e['source_tier']}" if e.get("source_tier") else ""
-            link = f" — [open ↗]({e['url']})" if e.get("url") else ""
-            st.markdown(f"- {e['source']}{tier}{link}")
-        if len(evidence) > 2:
-            with st.expander(f"See all {len(evidence)} references"):
-                st.dataframe(
-                    [
-                        {"Source": e["source"], "Type": e.get("source_tier") or e.get("evidence_type", "—"),
-                         "Strength": f"{e.get('strength','?')}/5", "Link": e.get("url", "")}
-                        for e in evidence
-                    ],
-                    hide_index=True, use_container_width=True,
-                    column_config={"Link": st.column_config.LinkColumn("Link")},
-                )
-        st.caption("Full details on the 📚 Evidence & resources screen.")
-
-    c1, c2 = st.columns(2)
-    c1.button("← Back", on_click=go, args=("describe",), use_container_width=True)
-    c2.button("I ran this measurement  →", type="primary", on_click=go, args=("results",), use_container_width=True)
-
-
-def screen_results() -> None:
-    result = st.session_state.result
-    if result is None:
-        st.info("Start by describing an experiment.")
-        st.button("← Go to step 1", on_click=go, args=("describe",))
-        return
-
-    _breadcrumb()
-    st.subheader("Enter the measurement result")
-    branches = result["uncertainty_map"]["branches"]
-    b = branches[st.session_state.chosen_branch_idx]
-    st.info(f"You chose to test **{b['hypothesis']}** via **{b['test']}**.")
-
-    outcome_key = st.radio(
-        "What did the measurement show?",
-        options=list(OUTCOME_LABELS.keys()),
-        format_func=lambda k: OUTCOME_LABELS[k],
-    )
-    note = st.text_input("Notes (optional)", placeholder="e.g. old reagent lot rescued the signal")
-
-    c1, c2 = st.columns(2)
-    c1.button("← Back", on_click=go, args=("decide",), use_container_width=True)
-    if c2.button("Record result  →", type="primary", use_container_width=True):
-        st.session_state.outcome = apply_run_outcome(
-            result["action_plan"], result["uncertainty_map"], result["pioneer_structured"],
-            outcome_key, selected_branch_index=st.session_state.chosen_branch_idx, note=note,
-        )
-        st.session_state.outcome["note"] = note
-        st.session_state.outcome["tested_branch"] = b["hypothesis"]
-        # Persist as a labeled Pioneer training row for future fine-tuning.
-        store.record_event(
-            round=st.session_state.round,
-            domain=result["structured_observations"].get("domain", ""),
-            tested_branch=b["hypothesis"],
-            outcome=outcome_key,
-            outcome_note=note,
-            what_next=st.session_state.outcome["what_next"],
-            training_row=st.session_state.outcome["pioneer_training_row"],
-        )
-        st.session_state.screen = "next"
-        st.rerun()
-
-
-def screen_next() -> None:
-    result = st.session_state.result
-    outcome = st.session_state.outcome
-    if result is None or outcome is None:
-        st.info("Run an analysis and record a result first.")
-        st.button("← Go to step 1", on_click=go, args=("describe",))
-        return
-
-    _breadcrumb()
-    st.subheader("Next action")
-    st.success(f"**What to do next:** {outcome['what_next']}", icon="➡️")
-    st.caption(outcome["summary"])
-
-    st.markdown("**Updated decision tree** (confidence shifted by your result)")
-    _render_tree(result)
-
-    with st.expander("Branch confidence updates"):
-        st.dataframe(
-            [
-                {"Explanation": u["branch"], "Status": u["status"],
-                 "Δ": u["delta"], "New confidence": u["new_confidence"]}
-                for u in outcome["branch_updates"]
-            ],
-            hide_index=True, use_container_width=True,
-        )
-
-    st.divider()
-    st.markdown("**Continue the investigation**")
-    c1, c2 = st.columns(2)
-    if c1.button("Plan next measurement  ↺", type="primary", use_container_width=True):
-        # Record this round, then re-analyze with the new result folded in.
-        st.session_state.history.append({
-            "round": st.session_state.round,
-            "tested": outcome.get("tested_branch"),
-            "outcome": OUTCOME_LABELS.get(outcome["outcome"], outcome["outcome"]),
-            "note": outcome.get("note", ""),
-            "what_next": outcome["what_next"],
-        })
-        augmented = (
-            f"{st.session_state.note}\n\n"
-            f"Update (round {st.session_state.round}): ran '{outcome.get('tested_branch')}' check. "
-            f"Outcome: {OUTCOME_LABELS.get(outcome['outcome'], outcome['outcome'])}. {outcome.get('note','')}"
-        )
-        st.session_state.note = augmented
-        st.session_state.round += 1
-        _run_analysis(augmented)
-        st.rerun()
-    if c2.button("Start new investigation", use_container_width=True):
-        for k in ("result", "outcome", "history"):
-            st.session_state[k] = None if k != "history" else []
-        st.session_state.round = 1
-        st.session_state.note = ""
-        st.session_state.screen = "describe"
-        st.rerun()
-
-
 def screen_tree() -> None:
-    result = st.session_state.result
-    if result is None:
-        st.info("Run an analysis first.")
-        st.button("← Go to step 1", on_click=go, args=("describe",))
+    if st.session_state.tree is None:
+        st.info("Start an investigation first.")
+        st.button("← Go to Setup", on_click=go, args=("describe",))
         return
     st.subheader("🌳 Decision tree")
-    st.caption("BioSignal Navigator preserves uncertainty as a decision graph instead of collapsing it into one answer.")
-    _render_tree(result)
-    st.markdown("**Branches**")
-    for b in result["uncertainty_map"]["branches"]:
-        with st.container(border=True):
-            st.markdown(f"**{b['hypothesis']}**")
-            st.caption(f"Test: {b['test']} · {b['what_would_change_our_mind']}")
-    if st.session_state.history:
+    st.caption("Generated upfront, updated live. BioSignal Navigator preserves uncertainty as a branching decision graph instead of collapsing it into one answer.")
+    _render_tree()
+    if st.session_state.path:
         st.markdown("**Investigation log**")
         st.dataframe(
             [
-                {"Round": h["round"], "Tested": h["tested"], "Outcome": h["outcome"], "Then": h["what_next"]}
-                for h in st.session_state.history
+                {"#": i + 1, "Decision": p["question"], "Outcome recorded": p["label"]}
+                for i, p in enumerate(st.session_state.path)
             ],
             hide_index=True, use_container_width=True,
         )
-    st.button("← Back to workflow", on_click=go, args=("decide",))
+    st.button("← Back to investigation", on_click=go, args=("investigate",))
 
 
 def screen_evidence() -> None:
     result = st.session_state.result
-    if result is None:
-        st.info("Run an analysis first.")
-        st.button("← Go to step 1", on_click=go, args=("describe",))
-        return
     st.subheader("📚 Evidence & resources")
-    st.caption("Supporting literature for your decision — not the answer. Treat as leads to verify.")
+    st.caption("Supporting literature for the workflow — leads to verify, not the answer.")
+    if result is None:
+        st.info("Start an investigation first.")
+        return
     tavily_live = result["integration_status"]["tavily"].get("mode") == "live"
     st.caption(f"Source: {'🟢 live web search via Tavily + curated references' if tavily_live else 'curated reference library'}")
     for e in result.get("evidence", []):
@@ -444,56 +309,50 @@ def screen_evidence() -> None:
             if e.get("url"):
                 st.markdown(f"[Open source ↗]({e['url']})")
             st.caption(f"⚠️ {e['caveat']}")
-
-    st.markdown("### Troubleshooting memo")
     memo = result["synthesis"]
-    gemini_live = memo.get("mode") == "live"
-    st.caption(f"{'🟢 synthesized live by Gemini' if gemini_live else '⚪ deterministic memo (no Gemini key set)'} · {memo.get('detail','')}")
+    st.markdown("### Troubleshooting memo")
+    st.caption(f"{'🟢 synthesized live by Gemini' if memo.get('mode') == 'live' else '⚪ deterministic memo'} · {memo.get('detail','')}")
     if memo.get("text"):
         with st.container(border=True):
             st.markdown(memo["text"])
-    st.button("← Back to workflow", on_click=go, args=("decide",))
 
 
 def screen_dataset() -> None:
     st.subheader("🗄️ Training data")
     st.caption(
-        "Every recorded outcome is persisted as a labeled Pioneer training row. The workflow "
+        "Every recorded decision is persisted as a labeled Pioneer training row — the workflow "
         "accumulates a real dataset that can fine-tune the extractor/router over time."
     )
     events = store.fetch_events()
     st.metric("Recorded training examples", store.count())
     if not events:
-        st.info("No recorded results yet. Run a measurement and record its result in step 3 to add the first example.")
-    else:
-        st.dataframe(
-            [
-                {"When": e["ts"], "Round": e["round"], "Domain": e["domain"],
-                 "Tested": e["tested_branch"], "Outcome": OUTCOME_LABELS.get(e["outcome"], e["outcome"]),
-                 "Notes": e["outcome_note"]}
-                for e in events
-            ],
-            hide_index=True, use_container_width=True,
-        )
-        jsonl = store.export_jsonl()
-        st.download_button(
-            "⬇️ Export dataset (JSONL for fine-tuning)",
-            data=jsonl, file_name="biosignal_training.jsonl", mime="application/jsonl",
-            use_container_width=True,
-        )
-        with st.expander("Preview a training row"):
-            import json as _json
-            st.json(_json.loads(events[0]["training_row"]) if events[0].get("training_row") else {})
-    st.button("← Back to workflow", on_click=go, args=("decide",))
+        st.info("No recorded decisions yet. Record an outcome in the investigation to add the first example.")
+        return
+    st.dataframe(
+        [
+            {"When": e["ts"], "#": e["round"], "Workflow": e["domain"],
+             "Decision": _short(e["tested_branch"], 60), "Outcome": e["outcome_note"]}
+            for e in events
+        ],
+        hide_index=True, use_container_width=True,
+    )
+    st.download_button(
+        "⬇️ Export dataset (JSONL for fine-tuning)",
+        data=store.export_jsonl(), file_name="biosignal_training.jsonl",
+        mime="application/jsonl", use_container_width=True,
+    )
+    with st.expander("Preview a training row"):
+        import json as _json
+        st.json(_json.loads(events[0]["training_row"]) if events[0].get("training_row") else {})
 
 
 def screen_how() -> None:
     result = st.session_state.result
-    if result is None:
-        st.info("Run an analysis first.")
-        st.button("← Go to step 1", on_click=go, args=("describe",))
-        return
     st.subheader("🔧 How it worked")
+    st.caption("The decision tree is generated upfront and updated live; partner technologies power extraction, evidence, and synthesis.")
+    if result is None:
+        st.info("Start an investigation first.")
+        return
     st.markdown("**Agent pipeline**")
     for step in result.get("trace", []):
         st.markdown(f"- **{step['agent']}** — {step['summary']}")
@@ -502,9 +361,9 @@ def screen_how() -> None:
     for item in result.get("partner_trace", []):
         badge = badge_map.get(item.get("badge", ""), "🟢 LIVE" if item.get("live") else "⚪ fallback")
         st.markdown(f"- {badge} · **{item['tool']}** — {item['role']}")
-    st.markdown("**Pioneer — structured extraction**")
     triples = result.get("pioneer_triples", [])
     if triples:
+        st.markdown("**Pioneer — structured extraction**")
         st.dataframe(
             [
                 {"Observation": t["observation"], "Possible mechanism": t["failure_hypothesis"],
@@ -513,7 +372,6 @@ def screen_how() -> None:
             ],
             hide_index=True, use_container_width=True,
         )
-    st.button("← Back to workflow", on_click=go, args=("decide",))
 
 
 # --------------------------------------------------------------------------- #
@@ -521,14 +379,11 @@ def screen_how() -> None:
 # --------------------------------------------------------------------------- #
 _init_state()
 _sidebar()
-
 st.title("BioSignal Navigator")
 
 ROUTES = {
     "describe": screen_describe,
-    "decide": screen_decide,
-    "results": screen_results,
-    "next": screen_next,
+    "investigate": screen_investigate,
     "tree": screen_tree,
     "evidence": screen_evidence,
     "dataset": screen_dataset,
