@@ -22,6 +22,57 @@ from __future__ import annotations
 import os
 import re
 
+_DEFAULT_PIONEER_MODEL = "fastino/gliner2-base-v1"
+
+_PIONEER_SCHEMA = {
+    "entities": [
+        "macro_signal",
+        "trend",
+        "sample_context",
+        "time_context",
+        "candidate_mechanism",
+        "biomarker",
+        "assay",
+        "uncertainty",
+        "safety_boundary",
+    ],
+    "classifications": [
+        {
+            "task": "safety",
+            "labels": [
+                "research_workflow_only",
+                "needs_human_review",
+                "insufficient_evidence",
+                "clinical_claim_risk",
+            ],
+        },
+        {
+            "task": "domain",
+            "labels": [
+                "domain_living_tissue_systems",
+                "biotech_experiment_troubleshooting",
+            ],
+        },
+    ],
+    "relations": [
+        {
+            "name": "supports_possible_mechanism",
+            "source": "macro_signal",
+            "target": "candidate_mechanism",
+        },
+        {
+            "name": "reduces_uncertainty_about",
+            "source": "assay",
+            "target": "candidate_mechanism",
+        },
+        {
+            "name": "must_not_claim",
+            "source": "safety_boundary",
+            "target": "candidate_mechanism",
+        },
+    ],
+}
+
 # --- Deterministic lexicons -------------------------------------------------
 
 # macro_signal keyword -> canonical label
@@ -231,6 +282,89 @@ def _round(value: float) -> float:
     return round(min(value, 0.95), 2)
 
 
+def _score(item: dict, default: float = 0.7) -> float:
+    raw = item.get("confidence", item.get("score", default))
+    try:
+        return _round(float(raw))
+    except (TypeError, ValueError):
+        return _round(default)
+
+
+def _canonical_label(text: str) -> str:
+    return re.sub(r"[^a-zA-Z0-9]+", "_", text.strip().lower()).strip("_")
+
+
+def _normalize_live_payload(note: str, payload: dict, skeleton: dict) -> dict:
+    """Map documented Pioneer ``/inference`` outputs into our stable schema.
+
+    Pioneer encoder responses are schema-oriented (entities, classifications,
+    structures, relations). The app needs a fixed downstream shape, so this
+    function accepts common documented fields while retaining deterministic
+    fallback values when the model returns sparse output.
+    """
+    raw_entities = payload.get("entities")
+    raw_classifications = payload.get("classifications")
+    raw_relations = payload.get("relations")
+    entities: list = raw_entities if isinstance(raw_entities, list) else []
+    classifications: list = raw_classifications if isinstance(raw_classifications, list) else []
+    relations: list = raw_relations if isinstance(raw_relations, list) else []
+
+    live_observations = []
+    live_mechanisms = []
+    live_measurements = []
+    pending_trends: list[tuple[str, float]] = []
+
+    for entity in entities:
+        if not isinstance(entity, dict):
+            continue
+        entity_type = str(entity.get("label") or entity.get("type") or entity.get("entity") or "")
+        text = str(entity.get("text") or entity.get("value") or entity.get("span") or "").strip()
+        if not text:
+            continue
+        confidence = _score(entity)
+        canonical = _canonical_label(text)
+        if entity_type == "macro_signal":
+            live_observations.append({"label": canonical, "trend": "reported", "confidence": confidence})
+        elif entity_type == "trend":
+            pending_trends.append((text.lower(), confidence))
+        elif entity_type == "candidate_mechanism":
+            live_mechanisms.append({"label": canonical, "confidence": confidence})
+        elif entity_type in {"assay", "biomarker"}:
+            live_measurements.append({"label": canonical, "confidence": confidence})
+
+    if pending_trends and live_observations:
+        trend, trend_confidence = pending_trends[0]
+        trend_label = _TREND_WORDS.get(trend, _canonical_label(trend))
+        live_observations[0]["trend"] = trend_label
+        live_observations[0]["confidence"] = max(live_observations[0].get("confidence", 0), _round(trend_confidence))
+
+    if live_observations:
+        skeleton["observations"] = live_observations
+    if live_mechanisms:
+        skeleton["candidate_mechanisms"] = live_mechanisms
+    if live_measurements:
+        skeleton["suggested_measurements"] = live_measurements
+    if relations:
+        skeleton["relations"] = relations
+    elif live_observations or live_mechanisms or live_measurements:
+        skeleton["relations"] = _extract_relations(
+            skeleton["observations"],
+            skeleton["candidate_mechanisms"],
+            skeleton["suggested_measurements"],
+        )
+
+    safety_flags = skeleton["safety_flags"]
+    for classification in classifications:
+        if not isinstance(classification, dict):
+            continue
+        label = str(classification.get("label") or classification.get("class") or "")
+        score = _score(classification, default=0.0)
+        if label in safety_flags and score >= 0.5:
+            safety_flags[label] = True
+
+    return skeleton
+
+
 def _extract_mechanisms(observations: list[dict]) -> list[dict]:
     scores: dict[str, float] = {}
     for obs in observations:
@@ -321,11 +455,10 @@ def _fallback_extract(note: str) -> dict:
 def pioneer_status() -> dict:
     """Report Pioneer availability without making a network call."""
     has_key = bool(os.getenv("PIONEER_API_KEY"))
-    has_model = bool(os.getenv("PIONEER_MODEL_ID"))
-    if has_key and has_model:
-        return {"available": True, "mode": "live", "model_id": os.getenv("PIONEER_MODEL_ID")}
-    missing = [name for name in ("PIONEER_API_KEY", "PIONEER_MODEL_ID")
-               if not os.getenv(name)]
+    model_id = os.getenv("PIONEER_MODEL_ID") or _DEFAULT_PIONEER_MODEL
+    if has_key:
+        return {"available": True, "mode": "live", "model_id": model_id}
+    missing = ["PIONEER_API_KEY"]
     return {"available": False, "mode": "fallback", "missing": missing}
 
 
@@ -337,15 +470,20 @@ def _live_extract(note: str) -> dict | None:
     Pioneer docs before relying on this in production.
     """
     base_url = os.getenv("PIONEER_BASE_URL", "https://api.pioneer.ai")
-    model_id = os.getenv("PIONEER_MODEL_ID")
+    model_id = os.getenv("PIONEER_MODEL_ID") or _DEFAULT_PIONEER_MODEL
     api_key = os.getenv("PIONEER_API_KEY")
     try:
         import requests
 
         response = requests.post(
-            f"{base_url.rstrip('/')}/v1/extract",
-            headers={"Authorization": f"Bearer {api_key}"},
-            json={"model": model_id, "input": note},
+            f"{base_url.rstrip('/')}/inference",
+            headers={"X-API-Key": api_key, "Content-Type": "application/json"},
+            json={
+                "model_id": model_id,
+                "text": note,
+                "schema": _PIONEER_SCHEMA,
+                "threshold": 0.35,
+            },
             timeout=12,
         )
         response.raise_for_status()
@@ -353,13 +491,9 @@ def _live_extract(note: str) -> dict | None:
     except Exception:
         return None
 
-    # Merge live payload onto the deterministic skeleton so downstream code
-    # always sees the full schema even if the model omits a field.
     structured = _fallback_extract(note)
     if isinstance(payload, dict):
-        for key in ("observations", "candidate_mechanisms", "suggested_measurements", "relations"):
-            if isinstance(payload.get(key), list):
-                structured[key] = payload[key]
+        structured = _normalize_live_payload(note, payload, structured)
     structured["mode"] = "live"
     structured["detail"] = f"Pioneer model '{model_id}' returned structured extraction."
     return structured

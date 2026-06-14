@@ -48,8 +48,9 @@ curl -fsS --retry-connrefused --retry 15 --retry-delay 1 http://127.0.0.1:8501/_
 ### Pioneer (Fastino) — 500€ side challenge
 - [ ] Deterministic GLiNER2-style extractor visible in the UI — **this is the shipped artifact** (works with no key).
 - [ ] Submission narrative ready (`docs/pioneer_strategy.md`).
-- [ ] (Optional, not pursued for this build) deploy a fine-tuned model and set
-      `PIONEER_MODEL_ID` to route extraction through a live Pioneer model.
+- [ ] If `PIONEER_API_KEY` is set, the app can call Pioneer `/inference` live.
+- [ ] Optional: deploy a fine-tuned model and set `PIONEER_MODEL_ID`; otherwise
+      the live path uses base `fastino/gliner2-base-v1`.
 
 ### Aikido — 1000€ side challenge
 - [ ] Free Aikido account created.

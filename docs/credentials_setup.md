@@ -50,6 +50,7 @@ Environment variables:
 
 ```bash
 PIONEER_API_KEY=...
+# Optional; defaults to fastino/gliner2-base-v1 when omitted.
 PIONEER_MODEL_ID=...
 ```
 
@@ -61,7 +62,7 @@ PIONEER_BASE_URL=...
 
 Implementation expectation:
 - App must show Pioneer-style triples even without credentials.
-- With credentials and a deployed model id, route extraction/evaluation through the Pioneer model if feasible.
+- With `PIONEER_API_KEY`, route extraction/evaluation through Pioneer's documented `POST /inference` endpoint if feasible; use `PIONEER_MODEL_ID` when set, otherwise the base GLiNER2 model.
 - Document exactly what Pioneer replaces or improves vs a generic LLM call.
 - See `docs/pioneer_strategy.md` for the model task, label schema, synthetic data plan, eval plan, and submission narrative.
 

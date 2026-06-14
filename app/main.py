@@ -72,7 +72,7 @@ with st.sidebar:
     st.divider()
     st.subheader("Partner integrations")
     st.caption("The demo runs fully on deterministic fallbacks. Keys enable live partner tech.")
-    st.markdown("- **Pioneer** — 🧩 deterministic extractor (the artifact)")
+    st.markdown(f"- **Pioneer** — {_badge(_key_present('PIONEER_API_KEY'))} structured extractor")
     st.markdown(f"- **Gemini** — {_badge(_key_present('GEMINI_API_KEY') or _key_present('OPENROUTER_API_KEY'))}")
     st.markdown(f"- **Tavily** — {_badge(_key_present('TAVILY_API_KEY'))}")
     st.markdown("- **Aikido** — 🔒 security scan (submission docs)")

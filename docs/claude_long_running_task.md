@@ -160,10 +160,10 @@ Success criterion for the side challenge:
 Implementation expectations:
 
 - Add or improve `app/agents/pioneer_extractor.py`.
-- Use `PIONEER_API_KEY` and `PIONEER_MODEL_ID` only if present.
+- Use `PIONEER_API_KEY` only if present; use `PIONEER_MODEL_ID` when available, otherwise default to the base GLiNER2 model.
 - Never require credentials for the demo path.
 - Surface status in the UI: `Pioneer: live fine-tuned model` or `Pioneer: fallback structured extractor`.
-- Do not hard-code undocumented endpoint shapes; check https://docs.pioneer.ai/introduction before live API calls.
+- Use the documented native inference shape: `POST https://api.pioneer.ai/inference` with `X-API-Key`, `model_id`, `text`, `schema`, and `threshold`.
 
 ## Priority D — Partner integration scaffolding
 

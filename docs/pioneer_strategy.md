@@ -174,8 +174,9 @@ def extract_troubleshooting_structure(note: str) -> dict:
 
 Behavior:
 
-- if `PIONEER_API_KEY` and `PIONEER_MODEL_ID` are present, call the deployed Pioneer model
-- if credentials/model id are missing, use deterministic local fallback
+- if `PIONEER_API_KEY` is present, call Pioneer's documented native inference endpoint (`POST /inference`) with `X-API-Key`
+- if `PIONEER_MODEL_ID` is present, use it; otherwise default to the inference-ready base GLiNER2 model `fastino/gliner2-base-v1`
+- if credentials are missing or the live call fails, use deterministic local fallback
 - never fail the demo because Pioneer is unavailable
 - surface status in the UI: `Pioneer: live fine-tuned model` vs `Pioneer: fallback structured extractor`
 
@@ -187,6 +188,7 @@ Do not hard-code undocumented endpoint shapes. Check the official Pioneer docs b
 
 ```bash
 PIONEER_API_KEY=...
+# Optional; defaults to fastino/gliner2-base-v1 when omitted.
 PIONEER_MODEL_ID=...
 ```
 
