@@ -1,4 +1,45 @@
+# Curated candidate mechanisms for the broad biotech R&D workflows. Keyed by the
+# domain string from observation_agent so every agent reasons about the same case.
+# These are POSSIBLE mechanisms, never claims of ground truth.
+_DOMAIN_MECHANISMS = {
+    "molecular assay (qPCR/ddPCR)": [
+        {"mechanism": "Contamination / carryover", "rationale": "No-template control amplification points to template or environmental contamination rather than true signal."},
+        {"mechanism": "Primer-dimer / non-specific amplification", "rationale": "A melt-curve shoulder suggests off-target or primer-dimer products inflating or distorting signal."},
+        {"mechanism": "Degraded template / low RNA integrity", "rationale": "Late Ct with borderline RNA integrity is consistent with degraded or low-quality template."},
+        {"mechanism": "RT inhibition / inhibitors in extract", "rationale": "Inhibitors carried through extraction can delay Ct without reflecting real abundance."},
+        {"mechanism": "Pipetting / setup error", "rationale": "Intermittent control failure with a new operator points to handling or setup variability."},
+    ],
+    "protein expression / purification": [
+        {"mechanism": "Low or burdened expression", "rationale": "An induction change can reduce expression independently of downstream recovery."},
+        {"mechanism": "Proteolysis / degradation", "rationale": "Extra SDS-PAGE bands are consistent with proteolytic clipping during expression or purification."},
+        {"mechanism": "Aggregation / misfolding", "rationale": "A new SEC shoulder with rising DLS aggregation suggests misfolding or instability, not just yield loss."},
+        {"mechanism": "Purification recovery loss", "rationale": "Resin saturation, binding, or wash conditions can lose product without an expression problem."},
+        {"mechanism": "pH-driven instability / storage", "rationale": "Lower buffer pH can shift solubility and aggregation between purification and analysis."},
+    ],
+    "cell culture / media & environment": [
+        {"mechanism": "Media lot / formulation shift", "rationale": "A recent media-lot change can alter growth and morphology independent of the cells."},
+        {"mechanism": "Incubator drift / CO2-pH excursion", "rationale": "A logged CO2 excursion can shift media pH and stress the culture transiently or persistently."},
+        {"mechanism": "Low-grade contamination", "rationale": "Slow growth and morphology change after a media/handling change can reflect mycoplasma or bacterial contamination."},
+        {"mechanism": "Freeze/thaw recovery stress", "rationale": "Post-thaw cultures often lag; inconsistent passages can reflect incomplete recovery."},
+        {"mechanism": "Passage-related drift", "rationale": "Accumulated passage changes or senescence can shift behavior across passages."},
+    ],
+    "bioprocess / fermentation": [
+        {"mechanism": "Oxygen-transfer limitation", "rationale": "A mid-run DO drop suggests aeration/agitation or oxygen-demand mismatch limiting the culture."},
+        {"mechanism": "Feed strategy / nutrient limitation", "rationale": "Off-gas divergence after a feed change is consistent with a feeding or nutrient limitation."},
+        {"mechanism": "Sensor calibration drift", "rationale": "Extra base demand and pH/DO behavior can reflect probe drift rather than true biology."},
+        {"mechanism": "Contamination", "rationale": "Atypical off-gas and base demand can indicate a contaminating organism."},
+        {"mechanism": "Strain instability / metabolic overflow", "rationale": "Productivity loss can reflect strain instability or overflow metabolism under the run conditions."},
+    ],
+}
+
+
 def infer_mechanisms(structured: dict) -> list[dict]:
+    domain = str(structured.get("domain", "")).lower()
+    for key, mechanisms in _DOMAIN_MECHANISMS.items():
+        if key.lower() in domain:
+            return mechanisms[:5]
+
+    # Original keyword-driven logic for the assay and living-system workflows.
     text = structured["raw_note"].lower()
     hypotheses = []
     if "lactate" in text or "ph" in text:

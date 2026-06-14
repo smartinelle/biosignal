@@ -1,35 +1,72 @@
 # 2-minute demo script
 
-## 0:00–0:15 — Problem
+## 0:00–0:10 — Problem
 
-Biotech R&D teams lose days when experiments fail ambiguously. A living tissue system may show rising lactate, falling pH, morphology changes, or oxygen shifts, but the team still has to decide: is this hypoxia, mitochondrial stress, endothelial injury, protocol failure, toxicity, or something else?
+Biotech R&D teams lose days when an experiment fails and nobody knows whether the issue is biology, protocol drift, reagent failure, instrument drift, or environment.
 
-## 0:15–0:30 — Product
+## 0:10–0:25 — Product
 
-BioSignal Navigator is an agent-human workspace for experiment troubleshooting. It turns messy readouts into failure hypotheses, evidence, next best measurements, and a human review question.
+BioSignal Navigator is a **general biotech R&D troubleshooting workspace**. It turns messy run notes into possible mechanisms, evidence with caveats, ranked next actions, and a human review decision.
 
-## 0:30–1:15 — Demo
+Say clearly:
 
-Use the **Living tissue preservation failure** preset.
+> This is research workflow software — not diagnosis, treatment, viability prediction, transplant guidance, or batch-disposition software.
+
+## 0:25–0:55 — Broad demo workflow
+
+Use the **Assay signal collapse** preset first.
 
 Show:
 
-1. Observation Agent structures the messy experiment note.
-2. Mechanism Agent proposes plausible failure modes.
-3. Evidence Agent attaches source-aware caveats.
-4. Measurement Agent recommends assays that reduce uncertainty.
-5. Human Review Agent escalates the unresolved scientific judgment.
+1. The note: signal down 40%, normal cell count, positive-control drift, worse edge wells, reagent-lot change.
+2. Product context: general biotech R&D workflow.
+3. The uncertainty bottleneck: biology vs protocol drift vs reagent/plate artifact.
 
-## 1:15–1:35 — Key differentiation
+Narration:
 
-Point to the **Uncertainty Bottleneck** section:
+> Instead of giving a confident answer, BioSignal Navigator asks: what measurement separates these explanations fastest?
 
-> The product does not pretend to infer biological truth from surface signals. It identifies what cannot be known yet and chooses the next measurement that would discriminate between mechanisms.
+## 0:55–1:20 — Action plan
+
+Show the **Recommended next actions** cards.
+
+Point to:
+
+1. old-vs-new reagent lot control;
+2. edge-vs-center plate-layout analysis;
+3. positive/negative control repeat or orthogonal readout.
+
+Narration:
+
+> The output is operational. It tells the scientist what to check next, why now, what readout to expect, and what remains unknown.
+
+## 1:20–1:35 — Generality
+
+Briefly open the preset list and show that the same loop applies to:
+
+- qPCR / ddPCR anomaly;
+- protein yield / purity drop;
+- cell culture drift;
+- bioreactor deviation;
+- organoid / organ-on-chip ambiguity;
+- ex-vivo tissue preservation.
+
+Narration:
+
+> Tissue preservation and organoids are use cases. The product category is broader: biotech R&D troubleshooting.
 
 ## 1:35–1:50 — Partner tech
 
-Gemini handles mechanism synthesis, Tavily retrieves evidence, Pioneer extracts structured signal → hypothesis → measurement triples, and Aikido secures the repo for the side challenge.
+Show the partner trace.
+
+Say:
+
+> Pioneer/Fastino gives deterministic structured extraction, Gemini via OpenRouter supports synthesis, Tavily retrieves evidence, and Aikido gives security hygiene for the public repo.
 
 ## 1:50–2:00 — Close
 
-BioSignal Navigator is not clinical decision support. It is workflow software for biotech teams: when an experiment fails, it helps them choose the next best experiment faster.
+Show the partner-ready summary.
+
+Closing line:
+
+> BioSignal Navigator turns experimental ambiguity into a defensible next step — evidence first, uncertainty visible, human judgment preserved.

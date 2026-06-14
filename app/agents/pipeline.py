@@ -16,6 +16,7 @@ from .evidence_agent import retrieve_evidence
 from .assay_agent import suggest_measurements
 from .human_review_agent import human_review_question
 from .pioneer_extractor import extract_troubleshooting_structure, pioneer_status
+from .action_plan import build_action_plan
 
 
 def _dual_import(package_name: str, flat_name: str):
@@ -193,6 +194,16 @@ def run_pipeline(raw_observation: str) -> dict:
         synthesis = _llm.synthesize_memo(structured, hypotheses, evidence, measurements, question)
 
     triples = _triples_from_pioneer(pioneer, hypotheses, measurements)
+    partner_trace = _partner_trace(pioneer, synthesis, tavily)
+    action_plan = build_action_plan(
+        structured,
+        hypotheses,
+        measurements,
+        evidence,
+        workflow_context,
+        bottleneck,
+        partner_trace,
+    )
 
     return {
         "structured_observations": structured,
@@ -205,6 +216,7 @@ def run_pipeline(raw_observation: str) -> dict:
         "pioneer_triples": triples,
         "pioneer_structured": pioneer,
         "synthesis": synthesis,
+        "action_plan": action_plan,
         "integration_status": {
             "pioneer": pioneer_status(),
             "gemini": {"mode": synthesis.get("mode")},
@@ -216,7 +228,7 @@ def run_pipeline(raw_observation: str) -> dict:
             "Positions BioSignal Navigator as the interpretation layer on top of instruments and ELN/LIMS data, not a system of record.",
             "Escalates only the unresolved scientific judgment to a senior human reviewer.",
         ],
-        "partner_trace": _partner_trace(pioneer, synthesis, tavily),
+        "partner_trace": partner_trace,
         "trace": [
             {"agent": "Observation Agent", "summary": "Converted messy experiment notes into signals, context, and the R&D job-to-be-done."},
             {"agent": "Mechanism Agent", "summary": "Mapped readouts to plausible biological failure mechanisms without claiming ground truth."},

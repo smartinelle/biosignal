@@ -12,6 +12,10 @@ except Exception:  # noqa: BLE001
     pass
 
 from agents.pipeline import run_pipeline
+try:
+    from presets import PRESETS, PRESET_LABELS, PRESETS_BY_LABEL, get_note
+except ModuleNotFoundError:  # package import during verification
+    from app.presets import PRESETS, PRESET_LABELS, PRESETS_BY_LABEL, get_note
 
 st.set_page_config(page_title="BioSignal Navigator", page_icon="🧬", layout="wide")
 
@@ -59,15 +63,10 @@ with st.sidebar:
     st.header("Demo presets")
     preset = st.selectbox(
         "Case",
-        [
-            "Assay troubleshooting anomaly",
-            "Living tissue preservation failure",
-            "Organoid QC anomaly",
-            "Organ-on-chip drug response anomaly",
-        ],
+        PRESET_LABELS,
     )
     st.markdown("**Product:** general biotech R&D troubleshooting.")
-    st.markdown("**Use cases:** tissue preservation, organoid QC, organ-on-chip assays.")
+    st.markdown("**Use cases:** assay, qPCR/ddPCR, protein, cell culture, bioprocess, preservation, organoid/OoC.")
     st.markdown("**Atira fit:** specialized agents coordinate with a human expert around uncertainty.")
 
     st.divider()
@@ -78,16 +77,11 @@ with st.sidebar:
     st.markdown(f"- **Tavily** — {_badge(_key_present('TAVILY_API_KEY'))}")
     st.markdown("- **Aikido** — 🔒 security scan (submission docs)")
 
-if preset == "Assay troubleshooting anomaly":
-    default_obs = """Context: biotech R&D cell-based potency assay. Observations: signal is 40% lower than expected, cell count is normal, positive control drifted slightly, plate edge wells look worse, reagent lot changed last week. Goal: decide whether this is biology, protocol drift, reagent failure, or plate artifact before repeating the study."""
-elif preset == "Living tissue preservation failure":
-    default_obs = """Context: ex vivo preserved tissue sample in a biotech R&D workflow. Preservation duration: 48h cold storage. Macro signals: lactate rising, pH falling, vascular resistance increasing, oxygenation uncertain. Goal: debug the experiment and decide which measurement should be run next, without making a clinical viability claim."""
-elif preset == "Organoid QC anomaly":
-    default_obs = """Context: engineered organoid QC batch. Observations: abnormal morphology, borderline viability stain, media lactate rising, differentiation marker uncertain, possible hypoxic core. Goal: identify likely failure mechanisms and choose the next assays before repeating the batch."""
-else:
-    default_obs = """Context: organ-on-chip drug response experiment. Observations: unexpected barrier leak, oxygen consumption shift, inflammatory marker increase, morphology change after compound exposure. Goal: troubleshoot whether this is toxicity, protocol failure, or model instability and pick the next discriminating measurement."""
+default_obs = get_note(preset)
+selected_preset = PRESETS_BY_LABEL.get(preset, PRESETS[0])
 
 observation = st.text_area("Ambiguous experiment observation", value=default_obs, height=190)
+st.caption(f"Selected workflow: {selected_preset['category']}")
 
 if st.button("Run agent workflow", type="primary"):
     result = run_pipeline(observation)
@@ -102,8 +96,31 @@ if st.button("Run agent workflow", type="primary"):
         st.markdown(f"**Gap:** {context['product_gap']}")
         st.caption(f"Next validation: {context['next_validation']}")
 
-    # 1. Agent orchestration trace
-    st.subheader("1. Agent orchestration trace")
+    # 1. Action plan — the product surface judges and scientists should remember.
+    action_plan = result["action_plan"]
+    st.subheader("1. Recommended next actions")
+    st.caption("Ranked by likely impact, evidence strength, and speed to validation.")
+    plan_cols = st.columns(3)
+    for col, action in zip(plan_cols, action_plan["ranked_actions"]):
+        with col:
+            with st.container(border=True):
+                st.markdown(f"### #{action['rank']} {action['title']}")
+                st.markdown(f"**Impact:** `{action['impact']}` · **Effort:** `{action['effort']}` · **Confidence:** `{action['confidence']}`")
+                st.markdown(f"**Goal:** {action['goal']}")
+                st.markdown(f"**Expected readout:** {action['expected_readout']}")
+                st.caption(f"Risk: {action['risk']}")
+
+    with st.container(border=True):
+        st.markdown("### Partner-ready summary")
+        for bullet in action_plan["partner_summary"]:
+            st.markdown(f"- {bullet}")
+        st.markdown("### What we still do not know")
+        for unknown in action_plan["what_we_do_not_know"]:
+            st.markdown(f"- {unknown}")
+        st.info(action_plan["human_decision"])
+
+    # 2. Agent orchestration trace
+    st.subheader("2. Agent orchestration trace")
     cols = st.columns(5)
     for col, step in zip(cols, result["trace"]):
         with col:
@@ -123,7 +140,7 @@ if st.button("Run agent workflow", type="primary"):
         )
 
     # 3. Synthesized troubleshooting memo (Gemini live or deterministic fallback)
-    st.subheader("2. Troubleshooting memo")
+    st.subheader("3. Troubleshooting memo")
     synthesis = result["synthesis"]
     st.caption(f"Memo synthesis — {_badge(synthesis['mode'] == 'live')} · {synthesis['detail']}")
     if synthesis.get("text"):
@@ -156,7 +173,7 @@ if st.button("Run agent workflow", type="primary"):
 
     # 6. Pioneer structured extraction artifact
     pioneer = result["pioneer_structured"]
-    st.subheader("3. Pioneer structured extraction")
+    st.subheader("4. Pioneer structured extraction")
     pioneer_badge = _BADGE_TOKENS["live"] if pioneer["mode"] == "live" else _BADGE_TOKENS["artifact"]
     st.caption(
         f"Side-challenge artifact — {pioneer_badge} · {pioneer['detail']}  "
@@ -195,7 +212,7 @@ if st.button("Run agent workflow", type="primary"):
         st.json(pioneer["relations"])
 
     # 7. Partner technology trace with live/fallback status
-    st.subheader("4. Partner technology trace")
+    st.subheader("5. Partner technology trace")
     st.caption("Live vs fallback is shown honestly — the demo never hides which integrations ran.")
     for item in result["partner_trace"]:
         badge = _BADGE_TOKENS.get(item.get("badge", ""), _badge(item["live"]))
@@ -203,6 +220,6 @@ if st.button("Run agent workflow", type="primary"):
         st.caption(f"    {item['status']}")
 
     # 8. Business impact
-    st.subheader("5. Business impact")
+    st.subheader("6. Business impact")
     for item in result["business_impact"]:
         st.markdown(f"- {item}")
