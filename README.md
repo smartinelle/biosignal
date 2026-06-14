@@ -59,18 +59,21 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
-streamlit run app/main.py --server.port 8501
+python -m streamlit run app/main.py --server.port 8501
 ```
 
+Use `python -m streamlit` (not the bare `streamlit` command) so it always runs from this
+virtualenv rather than a different Streamlit that may be on your PATH.
+
 The app binds to `127.0.0.1` (loopback) by default. Only expose it on the network when
-you intentionally need remote access: `streamlit run app/main.py --server.address 0.0.0.0`.
+you intentionally need remote access: `python -m streamlit run app/main.py --server.address 0.0.0.0`.
 
 ## Verification
 
 ```bash
 source .venv/bin/activate
 python -m compileall -q app
-streamlit run app/main.py --server.port 8501 --server.address 127.0.0.1 --server.headless true
+python -m streamlit run app/main.py --server.port 8501 --server.address 127.0.0.1 --server.headless true
 curl -fsS http://127.0.0.1:8501/_stcore/health
 ```
 
