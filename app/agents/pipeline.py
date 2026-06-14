@@ -19,6 +19,7 @@ from .pioneer_extractor import extract_troubleshooting_structure, pioneer_status
 from .action_plan import build_action_plan
 from .uncertainty_map import build_uncertainty_map
 from .experiment_memory import build_experiment_memory, training_examples_from_memory
+from .evidence_quality import grade_evidence, build_evidence_ladder
 
 
 def _dual_import(package_name: str, flat_name: str):
@@ -184,8 +185,10 @@ def run_pipeline(raw_observation: str) -> dict:
     if _search is not None:
         tavily = _search.search_evidence(structured, hypotheses)
     evidence = list(evidence) + list(tavily.get("results", []))
+    graded_evidence = grade_evidence(evidence, structured.get("domain", ""))
+    evidence_ladder = build_evidence_ladder(graded_evidence)
 
-    measurements = suggest_measurements(structured, hypotheses, evidence)
+    measurements = suggest_measurements(structured, hypotheses, graded_evidence)
     question = human_review_question(structured, evidence, measurements)
     bottleneck = _uncertainty_bottleneck(structured)
     workflow_context = _workflow_context(structured)
@@ -213,7 +216,8 @@ def run_pipeline(raw_observation: str) -> dict:
     return {
         "structured_observations": structured,
         "hypotheses": hypotheses,
-        "evidence": evidence,
+        "evidence": graded_evidence,
+        "evidence_ladder": evidence_ladder,
         "measurements": measurements,
         "human_question": question,
         "uncertainty_bottleneck": bottleneck,

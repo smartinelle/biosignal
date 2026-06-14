@@ -14,6 +14,11 @@ except Exception:  # noqa: BLE001
 from agents.pipeline import run_pipeline
 from agents.human_review import apply_human_feedback
 from agents.experiment_memory import build_experiment_memory, training_examples_from_memory
+from agents.outcome_loop import apply_run_outcome
+try:
+    from experiment_builder import build_custom_experiment_note, infer_dynamic_sections
+except ModuleNotFoundError:
+    from app.experiment_builder import build_custom_experiment_note, infer_dynamic_sections
 try:
     from presets import PRESETS, PRESET_LABELS, PRESETS_BY_LABEL, get_note
 except ModuleNotFoundError:  # package import during verification
@@ -62,13 +67,15 @@ st.info(
 )
 
 with st.sidebar:
-    st.header("Demo presets")
+    st.header("Experiment setup")
+    mode = st.radio("Input mode", ["Preset demo", "Custom workflow"], horizontal=True)
     preset = st.selectbox(
-        "Case",
+        "Preset case",
         PRESET_LABELS,
+        disabled=mode == "Custom workflow",
     )
     st.markdown("**Product:** general biotech R&D troubleshooting.")
-    st.markdown("**Use cases:** assay, qPCR/ddPCR, protein, cell culture, bioprocess, preservation, organoid/OoC.")
+    st.markdown("**Use cases:** assay, qPCR/ddPCR, protein, cell culture, bioprocess, preservation, organoid/OoC — or your own workflow.")
     st.markdown("**Atira fit:** specialized agents coordinate with a human expert around uncertainty.")
 
     st.divider()
@@ -79,11 +86,34 @@ with st.sidebar:
     st.markdown(f"- **Tavily** — {_badge(_key_present('TAVILY_API_KEY'))}")
     st.markdown("- **Aikido** — 🔒 security scan (submission docs)")
 
-default_obs = get_note(preset)
 selected_preset = PRESETS_BY_LABEL.get(preset, PRESETS[0])
-
-observation = st.text_area("Ambiguous experiment observation", value=default_obs, height=190)
-st.caption(f"Selected workflow: {selected_preset['category']}")
+if mode == "Custom workflow":
+    with st.container(border=True):
+        st.markdown("### Design your own experiment workflow")
+        c1, c2 = st.columns(2)
+        workflow = c1.text_input("Workflow / assay", value="ADC conjugation assay")
+        sample = c2.text_input("Sample / system", value="antibody-drug conjugate batch 17")
+        observations_raw = st.text_area(
+            "Observed anomaly / readouts, one per line",
+            value="DAR lower than expected\naggregation increased\nHIC shoulder peak",
+            height=110,
+        )
+        goal = st.text_input("Goal", value="choose the next discriminating analytical check")
+        constraints = st.text_input("Constraints", value="research workflow only; no release or clinical recommendation")
+        observation = build_custom_experiment_note(
+            workflow=workflow,
+            sample=sample,
+            observations=observations_raw.splitlines(),
+            goal=goal,
+            constraints=constraints,
+        )
+        dynamic_sections = infer_dynamic_sections(observation)
+        st.caption(f"Dynamic workflow family: {dynamic_sections['likely_workflow_family']}")
+        st.caption("Recommended UI sections: " + ", ".join(dynamic_sections["recommended_sections"]))
+else:
+    default_obs = get_note(preset)
+    observation = st.text_area("Ambiguous experiment observation", value=default_obs, height=190)
+    st.caption(f"Selected workflow: {selected_preset['category']}")
 
 if "last_result" not in st.session_state:
     st.session_state["last_result"] = None
@@ -155,6 +185,38 @@ if result:
         if reviewed_top.get("human_note"):
             st.caption(reviewed_top["human_note"])
 
+    # 1d. Run Outcome — close the loop after the recommended experiment.
+    with st.container(border=True):
+        st.markdown("## 1d. Run Outcome")
+        st.caption("After the scientist runs the next measurement, the result updates branch confidence and creates a labeled Pioneer training row.")
+        outcome = st.selectbox(
+            "Measurement outcome",
+            ["confirmed_branch", "weakened_branch", "inconclusive", "new_anomaly_found"],
+            format_func=lambda x: {
+                "confirmed_branch": "Confirmed selected branch",
+                "weakened_branch": "Weakened selected branch",
+                "inconclusive": "Inconclusive",
+                "new_anomaly_found": "New anomaly found",
+            }[x],
+        )
+        outcome_note = st.text_input("Outcome note", placeholder="e.g. old reagent lot rescued the signal")
+        outcome_result = apply_run_outcome(reviewed_plan, uncertainty_map, result["pioneer_structured"], outcome, note=outcome_note)
+        st.markdown(f"**What next:** {outcome_result['what_next']}")
+        st.dataframe(
+            [
+                {
+                    "Branch": update["branch"],
+                    "Status": update["status"],
+                    "Δ confidence": update["delta"],
+                    "New confidence": update["new_confidence"],
+                }
+                for update in outcome_result["branch_updates"]
+            ],
+            hide_index=True,
+        )
+        with st.expander("Pioneer training row from outcome", expanded=False):
+            st.json(outcome_result["pioneer_training_row"])
+
     with st.container(border=True):
         st.markdown("### Partner-ready summary")
         for bullet in action_plan["partner_summary"]:
@@ -206,12 +268,23 @@ if result:
         st.markdown("### Human review question")
         st.info(result["human_question"])
 
-    # 5. Evidence and caveats
+    # 5. Evidence quality ladder, evidence and caveats
+    st.markdown("### Evidence Quality Ladder")
+    st.caption("Evidence is graded for directness and safe use before it influences the next experiment.")
+    ladder_cols = st.columns(min(4, max(1, len(result["evidence_ladder"]))))
+    for col, tier in zip(ladder_cols, result["evidence_ladder"]):
+        with col:
+            st.metric(tier["label"], tier["count"])
+            st.caption(tier["safe_use"])
     st.markdown("### Evidence and caveats")
     for e in result["evidence"]:
         title = e["source"] + ("  ·  🟢 live (Tavily)" if e.get("live") else "")
         with st.expander(title, expanded=not e.get("live")):
             st.markdown(f"**Claim:** {e['claim']}")
+            st.markdown(
+                f"**Quality:** `{e.get('evidence_type', 'unknown')}` · `{e.get('relevance', 'unknown')}` · strength `{e.get('strength', '?')}/5"
+            )
+            st.markdown(f"**Safe use:** {e.get('safe_use', 'Hypothesis generation only.')}")
             if e.get("url"):
                 st.markdown(f"[source]({e['url']})")
             st.caption(f"Caveat: {e['caveat']}")

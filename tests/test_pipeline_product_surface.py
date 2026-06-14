@@ -13,6 +13,7 @@ class PipelineProductSurfaceTests(unittest.TestCase):
         self.assertIn("human_review_options", result)
         self.assertIn("experiment_memory", result)
         self.assertIn("pioneer_training_examples", result)
+        self.assertIn("evidence_ladder", result)
         self.assertGreaterEqual(len(result["uncertainty_map"]["branches"]), 3)
         self.assertIn("accept_next_action", result["human_review_options"])
         self.assertGreaterEqual(len(result["experiment_memory"]["runs"]), 3)
