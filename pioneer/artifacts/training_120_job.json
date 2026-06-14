@@ -1,11 +1,11 @@
 {
-  "id": "f368a521-8fc1-4c57-9b4b-4879b48d1644",
+  "id": "9e46b80e-7895-47c6-a88b-854deb354896",
   "user_id": "<redacted-user-id>",
   "project_id": "81b83ae0-65a4-405d-ab7b-1df3b38155c7",
-  "model_name": "biosignal-gliner2-troubleshooting",
+  "model_name": "biosignal-gliner2-120",
   "datasets": [
     {
-      "name": "biosignal-troubleshooting-probe",
+      "name": "biosignal-troubleshooting-120",
       "version": "1"
     }
   ],
@@ -15,15 +15,15 @@
   "learning_rate": 2e-05,
   "batch_size": 4,
   "trained_model_path": null,
-  "job_reference": "modal:fc-01KV2PRWRWM8SEXNCR00J4FK3A",
-  "instance_type": "modal-l4",
-  "status": "running",
-  "normalized_status": "running",
+  "job_reference": "9e46b80e-7895-47c6-a88b-854deb354896",
+  "instance_type": "ml.g4dn.xlarge",
+  "status": "requested",
+  "normalized_status": "requested",
   "is_terminal_status": false,
   "error_message": null,
-  "created_at": "2026-06-14T09:17:58.928680+00:00",
-  "updated_at": "2026-06-14T09:18:22.414609+00:00",
-  "started_at": "2026-06-14T09:18:22.414636+00:00",
+  "created_at": "2026-06-14T09:52:13.882481+00:00",
+  "updated_at": "2026-06-14T09:52:13.882481+00:00",
+  "started_at": null,
   "completed_at": null,
   "model_auto_selected": false,
   "model_selection_reason": null,
@@ -32,14 +32,11 @@
     "macro_signal",
     "trend",
     "candidate_mechanism",
-    "assay"
+    "assay",
+    "safety_boundary"
   ],
   "example": null,
-  "metrics": {
-    "final_training_loss": 19.632038,
-    "final_validation_loss": 16.879229,
-    "best_validation_loss": 16.879229
-  },
+  "metrics": null,
   "version_number": "1",
   "root_job_id": null,
   "provider_deployments": null,
