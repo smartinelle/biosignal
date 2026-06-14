@@ -2,7 +2,7 @@
 
 **Agent-human troubleshooting for ambiguous biotech R&D experiments.**
 
-When a living-system experiment fails ambiguously, BioSignal Navigator turns messy readouts into failure hypotheses, evidence, next measurements, and a human review question.
+When a biotech R&D experiment fails ambiguously, BioSignal Navigator turns messy run context into evidence-backed hypotheses, next discriminating measurements, and a human review decision.
 
 ## Hackathon framing
 
@@ -10,7 +10,7 @@ AI agents are entering healthcare through concrete workflows: documentation, cod
 
 > experimental observations → failure hypotheses → evidence → next best measurements → human expert review
 
-The first demo vertical is **living tissue systems**: tissue preservation, organoids, organ-on-chip, and tissue engineering QC. This keeps the product venture-shaped while preserving a sharp thesis demo.
+The main demo path is **general biotech R&D troubleshooting**: start with a broad assay or custom workflow, then optionally show tissue preservation, organoids, and organ-on-chip as proof workflows inside the broader category.
 
 BioSignal Navigator is **not** a diagnostic, treatment, transplant, or clinical decision system. It is a general biotech R&D troubleshooting workspace for experiment debugging.
 
@@ -31,14 +31,15 @@ BioSignal Navigator helps teams:
 
 ## Demo scenario
 
-A 48h cold-preserved ex-vivo tissue sample shows:
+Start with a broad assay or custom workflow:
 
-- rising lactate
-- falling pH
-- increasing vascular resistance
-- uncertain oxygenation
+- signal dropped after a reagent-lot change;
+- positive-control drift;
+- worse edge wells;
+- normal cell count;
+- goal: choose the next discriminating measurement before rerunning the study.
 
-The app produces a troubleshooting memo with possible mechanisms such as hypoxia, mitochondrial stress, endothelial dysfunction, inflammatory activation, and cell-type-specific degradation, then recommends measurements that would reduce uncertainty.
+Then optionally flash living-system cases such as cold-preserved tissue, organoids, or organ-on-chip to show category expansion. The app produces possible mechanisms, evidence grading, uncertainty branches, ranked next actions, human review, and an outcome loop that creates Pioneer training/eval rows.
 
 ## Partner technologies
 

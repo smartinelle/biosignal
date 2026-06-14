@@ -9,7 +9,7 @@
       Gemini + Tavily + Pioneer (Aikido as security side challenge).
 - [ ] **2-minute video demo** recorded (script: `docs/demo_script.md`).
 - [ ] Technical docs for jury evaluation (`docs/architecture.md`, `docs/partner_tech.md`,
-      `docs/research/`).
+      `docs/research/`, `docs/final_submission_runbook.md`).
 - [ ] API/tool documentation (`docs/credentials_setup.md`, `.env.example`).
 
 ## Demo robustness
