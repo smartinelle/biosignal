@@ -27,10 +27,12 @@ from agents.pipeline import run_pipeline
 
 try:
     import store
-    from decision_tree import get_workflow, is_terminal
+    from presets import PRESETS
+    from decision_tree import get_workflow, is_terminal, build_dynamic_tree
 except ModuleNotFoundError:  # package import during verification
     from app import store
-    from app.decision_tree import get_workflow, is_terminal
+    from app.presets import PRESETS
+    from app.decision_tree import get_workflow, is_terminal, build_dynamic_tree
 
 
 st.set_page_config(page_title="BioSignal Navigator", page_icon="🧬", layout="centered")
@@ -53,10 +55,19 @@ def _init_state() -> None:
     st.session_state.setdefault("tree", None)
     st.session_state.setdefault("current_node", None)
     st.session_state.setdefault("path", [])        # [{node, key, edge, question, label}]
+    st.session_state.setdefault("note", "")
 
 
 def go(screen: str) -> None:
     st.session_state.screen = screen
+
+
+def _load_example() -> None:
+    label = st.session_state.get("example_pick")
+    for preset in PRESETS:
+        if preset["label"] == label:
+            st.session_state.note = preset["note"]
+            return
 
 
 def _api_keys() -> dict:
@@ -67,11 +78,10 @@ def _api_keys() -> dict:
     }
 
 
-def _start_investigation(workflow: dict) -> None:
-    with st.spinner("Agents generating the decision tree and pulling supporting evidence…"):
-        st.session_state.result = run_pipeline(workflow["context"])
-    st.session_state.tree = workflow
-    st.session_state.current_node = workflow["root"]
+def _begin(tree: dict, result: dict) -> None:
+    st.session_state.result = result
+    st.session_state.tree = tree
+    st.session_state.current_node = tree["root"]
     st.session_state.path = []
     st.session_state.screen = "investigate"
 
@@ -102,13 +112,24 @@ def _decide(tree: dict, current: str, node: dict, opt: dict) -> None:
 # --------------------------------------------------------------------------- #
 # Decision tree rendering
 # --------------------------------------------------------------------------- #
-def _esc(text: str) -> str:
-    return str(text).replace('"', "'").replace("\n", " ")
-
-
 def _short(text: str, n: int) -> str:
     text = str(text)
     return text if len(text) <= n else text[: n - 1] + "…"
+
+
+def _wrap(text: str, width: int = 22) -> str:
+    """Word-wrap into graphviz \\n-joined lines so labels are never clipped."""
+    words = str(text).replace('"', "'").split()
+    lines, cur = [], ""
+    for w in words:
+        if cur and len(cur) + len(w) + 1 > width:
+            lines.append(cur)
+            cur = w
+        else:
+            cur = f"{cur} {w}".strip()
+    if cur:
+        lines.append(cur)
+    return "\\n".join(lines)
 
 
 def _tree_dot(tree: dict, current: str, chosen: dict) -> str:
@@ -116,9 +137,9 @@ def _tree_dot(tree: dict, current: str, chosen: dict) -> str:
     visited = set(chosen.keys())
     lines = [
         "digraph G {",
-        'rankdir=LR; bgcolor="transparent"; pad=0.2; nodesep=0.3; ranksep=0.5;',
-        'node [shape=box style="rounded,filled" fontname="Helvetica" fontsize=9 color="#cbd5e1" fillcolor="#ffffff"];',
-        'edge [color="#cbd5e1" fontname="Helvetica" fontsize=8 fontcolor="#64748b"];',
+        'rankdir=LR; bgcolor="transparent"; pad=0.25; nodesep=0.35; ranksep=0.6;',
+        'node [shape=box style="rounded,filled" fontname="Helvetica" fontsize=10 width=2 color="#cbd5e1" fillcolor="#ffffff"];',
+        'edge [color="#cbd5e1" fontname="Helvetica" fontsize=9 fontcolor="#475569"];',
     ]
     for nid, node in nodes.items():
         terminal = is_terminal(node)
@@ -129,14 +150,14 @@ def _tree_dot(tree: dict, current: str, chosen: dict) -> str:
         if nid == current:
             fill, border = (("#e7f6ec", "#3fa95b") if terminal else ("#e8eefc", "#6b8afd"))
         shape = "note" if terminal else "box"
-        lines.append(f'{nid} [label="{_esc(_short(label, 42))}" shape={shape} fillcolor="{fill}" color="{border}"];')
+        lines.append(f'{nid} [label="{_wrap(label, 26)}" shape={shape} fillcolor="{fill}" color="{border}"];')
     for nid, node in nodes.items():
         for opt in node.get("options", []):
             on_path = chosen.get(nid) == opt["key"]
             color = "#3fa95b" if on_path else "#cbd5e1"
             penwidth = "2" if on_path else "1"
             lines.append(
-                f'{nid} -> {opt["next"]} [label="{_esc(_short(opt["edge"], 18))}" color="{color}" penwidth={penwidth}];'
+                f'{nid} -> {opt["next"]} [label="{_wrap(opt["edge"], 16)}" color="{color}" penwidth={penwidth}];'
             )
     lines.append("}")
     return "\n".join(lines)
@@ -186,11 +207,12 @@ def _sidebar() -> None:
 def _papers(evidence: list[dict]) -> None:
     if not evidence:
         return
-    st.markdown("📚 **Supporting papers**")
+    st.markdown("📚 **Why this measurement — supporting papers**")
     for e in evidence:
-        tier = f" · {e['tier']}" if e.get("tier") else ""
         link = f" — [open ↗]({e['url']})" if e.get("url") else ""
-        st.markdown(f"- {e['source']}{tier}{link}")
+        st.markdown(f"- 📄 **{e['source']}**{link}")
+        if e.get("why"):
+            st.caption(f"↳ {e['why']}")
 
 
 # --------------------------------------------------------------------------- #
@@ -198,17 +220,43 @@ def _papers(evidence: list[dict]) -> None:
 # --------------------------------------------------------------------------- #
 def screen_describe() -> None:
     st.subheader("Start an investigation")
-    wf = get_workflow("tissue_preservation")
-    with st.container(border=True):
-        st.markdown(f"### {wf['title']}")
-        st.write(wf["context"])
-        st.caption(
-            "The agents generate the full decision tree upfront. You advance it by recording the "
-            "outcome of each measurement; the tree updates live until it reaches a resolution."
-        )
-    if st.button("▶ Generate investigation plan & start", type="primary", use_container_width=True):
-        _start_investigation(wf)
-        st.rerun()
+    st.caption(
+        "The agents generate a decision tree upfront, then you advance it by recording the outcome "
+        "of each measurement until it reaches a resolution."
+    )
+    mode = st.radio("Input", ["Demo workflow", "Custom query"], horizontal=True, label_visibility="collapsed")
+
+    if mode == "Demo workflow":
+        wf = get_workflow("tissue_preservation")
+        with st.container(border=True):
+            st.markdown(f"### {wf['title']}")
+            st.write(wf["context"])
+            st.caption("Curated demo workflow — a hand-built investigation to show the full flow end to end.")
+        if st.button("▶ Generate investigation plan & start", type="primary", use_container_width=True):
+            with st.spinner("Agents generating the decision tree and pulling supporting evidence…"):
+                result = run_pipeline(wf["context"])
+            _begin(wf, result)
+            st.rerun()
+    else:
+        with st.container(border=True):
+            st.caption("Describe any experiment — the tree is generated from the agent pipeline. Plain lab language; load an example or write your own.")
+            st.pills(
+                "Load an example", options=[p["label"] for p in PRESETS], selection_mode="single",
+                key="example_pick", on_change=_load_example,
+            )
+            st.text_area(
+                "Experiment note", key="note", height=150, label_visibility="collapsed",
+                placeholder="e.g. qPCR run: Ct ~3 cycles late, melt-curve shoulder, NTC weak amplification, borderline RNA integrity, new operator.",
+            )
+        if st.button("▶ Generate investigation from this note", type="primary", use_container_width=True):
+            if not st.session_state.note.strip():
+                st.warning("Add a note or load an example first.")
+            else:
+                with st.spinner("Agents structuring the note and generating the decision tree…"):
+                    result = run_pipeline(st.session_state.note)
+                    tree = build_dynamic_tree(result)
+                _begin(tree, result)
+                st.rerun()
 
 
 def screen_investigate() -> None:
@@ -251,15 +299,21 @@ def screen_investigate() -> None:
     # Active decision node
     st.markdown(f"### ❓ {node['question']}")
     with st.container(border=True):
-        st.markdown(f"**Run this measurement:** {node['test']}")
+        st.markdown("**① Run this measurement**")
+        st.markdown(node["test"])
+        if node.get("rationale"):
+            st.caption(f"Why this discriminates: {node['rationale']}")
         _papers(node.get("evidence", []))
 
-    st.markdown("**Record the outcome to advance the tree:**")
+    st.markdown("**② Report what the measurement showed** — click the result you observed; the tree advances accordingly:")
     for opt in node["options"]:
-        if st.button(opt["label"], key=f"opt_{current}_{opt['key']}", use_container_width=True):
+        if st.button(opt["label"], key=f"opt_{current}_{opt['key']}", type="secondary", use_container_width=True):
             _decide(tree, current, node, opt)
             st.rerun()
+        if opt.get("desc"):
+            st.caption(opt["desc"])
     if st.session_state.path:
+        st.divider()
         if st.button("↩ Revise last decision"):
             last = st.session_state.path.pop()
             st.session_state.current_node = last["node"]
