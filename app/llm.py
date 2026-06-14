@@ -16,6 +16,11 @@ from __future__ import annotations
 
 import os
 
+try:
+    from netguard import assert_safe_url
+except ModuleNotFoundError:  # package import context
+    from app.netguard import assert_safe_url
+
 _OPENROUTER_BASE = "https://openrouter.ai/api/v1"
 
 _SAFETY_FOOTER = (
@@ -123,8 +128,9 @@ def _build_prompt(structured: dict, hypotheses: list[dict], evidence: list[dict]
 def _call_openrouter(provider: dict, prompt: str) -> str:
     import requests
 
+    base_url = assert_safe_url(provider["base_url"])  # SSRF guard on env-configured URL
     response = requests.post(
-        f"{provider['base_url']}/chat/completions",
+        f"{base_url}/chat/completions",
         headers={
             "Authorization": f"Bearer {provider['key']}",
             "HTTP-Referer": "https://github.com/biosignal-navigator",
@@ -140,6 +146,7 @@ def _call_openrouter(provider: dict, prompt: str) -> str:
             "max_tokens": 400,
         },
         timeout=20,
+        allow_redirects=False,
     )
     response.raise_for_status()
     payload = response.json()

@@ -131,6 +131,7 @@ def _tavily_call(api_key: str, query: str, max_results: int) -> list[dict]:
             "topic": "general",
         },
         timeout=15,
+        allow_redirects=False,
     )
     response.raise_for_status()
     return list(response.json().get("results") or [])

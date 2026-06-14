@@ -89,5 +89,7 @@ def build_uncertainty_map(
     }
     rendered = str(result).lower()
     for term in _FORBIDDEN:
-        assert term not in rendered
+        if term in rendered:
+            # Raise (not assert) so the safety check still runs under PYTHONOPTIMIZE.
+            raise ValueError(f"Forbidden clinical term '{term}' in uncertainty-map output")
     return result

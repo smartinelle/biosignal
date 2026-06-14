@@ -22,6 +22,11 @@ from __future__ import annotations
 import os
 import re
 
+try:
+    from netguard import assert_safe_url
+except ModuleNotFoundError:  # package import context
+    from app.netguard import assert_safe_url
+
 _DEFAULT_PIONEER_MODEL = "fastino/gliner2-base-v1"
 
 _PIONEER_SCHEMA = {
@@ -512,8 +517,9 @@ def _live_extract(note: str) -> dict | None:
             "entities": _PIONEER_SCHEMA["entities"],
         }
 
+        safe_base = assert_safe_url(base_url.rstrip("/"))  # SSRF guard on env-configured URL
         response = requests.post(
-            f"{base_url.rstrip('/')}/inference",
+            f"{safe_base}/inference",
             headers={"X-API-Key": api_key, "Content-Type": "application/json"},
             json={
                 "model_id": model_id,
@@ -521,6 +527,7 @@ def _live_extract(note: str) -> dict | None:
                 "schema": inference_schema,
             },
             timeout=12,
+            allow_redirects=False,
         )
         response.raise_for_status()
         raw = response.json()
