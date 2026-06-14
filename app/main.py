@@ -1,9 +1,17 @@
+"""BioSignal Navigator — clean operator UI.
+
+A single, linear flow: describe an ambiguous experiment → get the next measurement
+to run, the likely explanations, evidence with references, and a caveated memo. The
+agent pipeline and partner-API machinery are tucked into one "How it worked" panel so
+a first-time scientist sees the answer, not the plumbing.
+"""
+
 import os
 from pathlib import Path
 
 import streamlit as st
 
-# Load .env before reading partner keys for the sidebar status / pipeline.
+# Load .env before reading partner keys (safe no-op without python-dotenv/.env).
 try:
     from dotenv import load_dotenv
 
@@ -12,450 +20,192 @@ except Exception:  # noqa: BLE001
     pass
 
 from agents.pipeline import run_pipeline
-from agents.human_review import apply_human_feedback
-from agents.experiment_memory import build_experiment_memory, training_examples_from_memory
-from agents.outcome_loop import apply_run_outcome
+
 try:
-    from experiment_builder import build_custom_experiment_note, infer_dynamic_sections
-except ModuleNotFoundError:
-    from app.experiment_builder import build_custom_experiment_note, infer_dynamic_sections
-try:
-    from presets import PRESETS, PRESET_LABELS, PRESETS_BY_LABEL, get_note
+    from presets import PRESETS
 except ModuleNotFoundError:  # package import during verification
-    from app.presets import PRESETS, PRESET_LABELS, PRESETS_BY_LABEL, get_note
-
-st.set_page_config(page_title="BioSignal Navigator", page_icon="🧬", layout="wide")
+    from app.presets import PRESETS
 
 
-def _badge(is_live: bool) -> str:
-    return "🟢 **LIVE**" if is_live else "⚪ Fallback"
+st.set_page_config(page_title="BioSignal Navigator", page_icon="🧬", layout="centered")
+
+DEFAULT_NOTE = PRESETS[0]["note"]
 
 
-_BADGE_TOKENS = {
-    "live": "🟢 **LIVE**",
-    "fallback": "⚪ Fallback",
-    "artifact": "🧩 Deterministic artifact",
-    "docs": "🔒 Submission docs",
-}
+def _api_keys() -> dict:
+    return {
+        "gemini": bool(os.getenv("GEMINI_API_KEY") or os.getenv("OPENROUTER_API_KEY")),
+        "tavily": bool(os.getenv("TAVILY_API_KEY")),
+        "pioneer": bool(os.getenv("PIONEER_API_KEY")),
+    }
 
 
-def _key_present(name: str) -> bool:
-    return bool(os.getenv(name))
+def _set_note(text: str) -> None:
+    st.session_state.note = text
 
 
-def _configured_partner_count() -> int:
-    return sum(
-        [
-            _key_present("PIONEER_API_KEY"),
-            _key_present("TAVILY_API_KEY"),
-            _key_present("GEMINI_API_KEY") or _key_present("OPENROUTER_API_KEY"),
-        ]
-    )
-
-
-def _provenance_rows(result: dict) -> list[dict]:
-    pioneer = result["pioneer_structured"]
-    synthesis = result["synthesis"]
-    evidence_live = sum(1 for item in result["evidence"] if item.get("live"))
-    return [
-        {
-            "Layer": "Pioneer / Fastino",
-            "What it produced": "typed observations, relations, safety flags",
-            "Mode": "LIVE API" if pioneer.get("mode") == "live" else "deterministic fallback artifact",
-            "AI generated?": "model/API or deterministic extractor",
-            "Where to inspect": "Pioneer tab → triples + raw relations",
-        },
-        {
-            "Layer": "Tavily",
-            "What it produced": f"{evidence_live} live source(s) + curated fallback evidence",
-            "Mode": "LIVE web research" if evidence_live else "no live web research in this run",
-            "AI generated?": "retrieval snippets, not final truth",
-            "Where to inspect": "Evidence tab → source links + quality ladder",
-        },
-        {
-            "Layer": "Gemini / OpenRouter",
-            "What it produced": "caveated troubleshooting memo",
-            "Mode": "LIVE synthesis" if synthesis.get("mode") == "live" else "deterministic memo fallback",
-            "AI generated?": "yes" if synthesis.get("mode") == "live" else "no live LLM call",
-            "Where to inspect": "Memo tab → status line + text",
-        },
-        {
-            "Layer": "Human review",
-            "What it produced": "accept/reject/correction + run outcome label",
-            "Mode": "operator input",
-            "AI generated?": "no — user decision",
-            "Where to inspect": "Review tab → feedback + outcome",
-        },
-    ]
-
-
-st.markdown(
-    """
-    <style>
-    .block-container { padding-top: 1.8rem; max-width: 1320px; }
-    div[data-testid="stMetric"] { border: 1px solid rgba(128,128,128,.22); border-radius: 14px; padding: 12px; }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
-
-st.title("BioSignal Navigator")
-st.caption("An operator console for ambiguous biotech R&D experiments — not a slide deck, not clinical decision support.")
-
-st.markdown(
-    """
-    ### Triage a failed or ambiguous run, then choose the next discriminating measurement
-    Paste an experiment note, instrument observation, or ELN-style run summary. The app separates
-    what was extracted, what was retrieved live, what was generated by AI, and what still needs a scientist.
-    """
-)
-
-with st.container(border=True):
-    st.markdown("### How a scientist would use it")
-    c1, c2, c3, c4 = st.columns(4)
-    c1.markdown("**1. Describe the run**  \nWhat failed? What controls/readouts changed?")
-    c2.markdown("**2. Inspect provenance**  \nLive retrieval vs fallback vs AI synthesis.")
-    c3.markdown("**3. Choose a branch**  \nPick the hypothesis worth testing next.")
-    c4.markdown("**4. Record outcome**  \nCreate a Pioneer training/eval row.")
-
-configured = _configured_partner_count()
-if configured == 0:
-    st.warning(
-        "No partner API keys are configured in this environment. This run will be honest fallback mode: no live Tavily web research, no live Gemini synthesis, no live Pioneer API call. Add keys to `.env` for live mode.",
-        icon="🔌",
-    )
-else:
-    st.success(f"{configured}/3 partner API layers configured. The provenance board below will show exactly which layers ran live.", icon="🟢")
-
-st.info(
-    "Research workflow only — not diagnosis, treatment, viability prediction, or clinical decision support. Human review required.",
-    icon="🛡️",
-)
-
+# --------------------------------------------------------------------------- #
+# Sidebar — live API status (the "where are the APIs used" answer at a glance)
+# --------------------------------------------------------------------------- #
+keys = _api_keys()
 with st.sidebar:
-    st.header("Experiment setup")
-    mode = st.radio("Input mode", ["Custom workflow", "Preset demo"], horizontal=True)
-    preset = st.selectbox(
-        "Preset case",
-        PRESET_LABELS,
-        disabled=mode == "Custom workflow",
+    st.markdown("### Live integrations")
+    st.markdown(f"{'🟢' if keys['pioneer'] else '⚪'} **Pioneer** — structured extraction")
+    st.markdown(f"{'🟢' if keys['tavily'] else '⚪'} **Tavily** — evidence & references")
+    st.markdown(f"{'🟢' if keys['gemini'] else '⚪'} **Gemini** — memo synthesis")
+    st.markdown("🔒 **Aikido** — repo security scan")
+    if not any(keys.values()):
+        st.info("No API keys set — running in offline demo mode with curated data and real references. Add keys to `.env` for live mode.")
+    else:
+        st.caption("🟢 = a live API runs on Analyze. ⚪ = curated fallback.")
+    st.divider()
+    st.caption(
+        "Research troubleshooting only — not diagnosis, treatment, viability prediction, "
+        "or clinical decision support. A senior scientist reviews every result."
     )
-    st.markdown("**Product:** general biotech R&D troubleshooting.")
-    st.markdown("**Use cases:** assay, qPCR/ddPCR, protein, cell culture, bioprocess, preservation, organoid/OoC — or your own workflow.")
-    st.markdown("**Atira fit:** specialized agents coordinate with a human expert around uncertainty.")
+
+
+# --------------------------------------------------------------------------- #
+# Header
+# --------------------------------------------------------------------------- #
+st.title("🧬 BioSignal Navigator")
+st.markdown("#### Turn an ambiguous experiment into the next measurement worth running.")
+st.caption(
+    "Paste a messy lab note. The agents structure it, propose possible mechanisms, "
+    "pull evidence, and name the single measurement that best reduces uncertainty — "
+    "then hand the judgment call to you."
+)
+
+
+# --------------------------------------------------------------------------- #
+# 1 · Input
+# --------------------------------------------------------------------------- #
+if "note" not in st.session_state:
+    st.session_state.note = DEFAULT_NOTE
+
+st.markdown("##### 1 · Describe what happened")
+st.caption("Plain lab language: what ran, what looked off, and the decision you're stuck on. Or load an example:")
+
+chip_cols = st.columns(4) + st.columns(4)
+for col, preset in zip(chip_cols, PRESETS):
+    col.button(
+        preset["label"],
+        key=f"ex_{preset['key']}",
+        on_click=_set_note,
+        args=(preset["note"],),
+        use_container_width=True,
+    )
+
+st.text_area("Experiment note", key="note", height=160, label_visibility="collapsed")
+analyze = st.button("Analyze experiment  →", type="primary", use_container_width=True)
+
+if analyze and st.session_state.note.strip():
+    with st.spinner("Agents working: structure → hypotheses → evidence → next measurement…"):
+        st.session_state.result = run_pipeline(st.session_state.note)
+elif analyze:
+    st.warning("Add a short experiment note first (or load an example above).")
+
+
+# --------------------------------------------------------------------------- #
+# 2 · Result
+# --------------------------------------------------------------------------- #
+result = st.session_state.get("result")
+if result:
+    gemini_live = result["synthesis"].get("mode") == "live"
+    tavily_live = result["integration_status"]["tavily"].get("mode") == "live"
+    pioneer_live = result["pioneer_structured"].get("mode") == "live"
 
     st.divider()
-    st.subheader("Live integration status")
-    st.caption("Green means a real external API will be called on run. Fallback means local deterministic demo logic only.")
-    st.markdown(f"- **Pioneer** — {_badge(_key_present('PIONEER_API_KEY'))} structured extraction")
-    st.markdown(f"- **Tavily** — {_badge(_key_present('TAVILY_API_KEY'))} live web/source research")
-    st.markdown(f"- **Gemini** — {_badge(_key_present('GEMINI_API_KEY') or _key_present('OPENROUTER_API_KEY'))} memo synthesis")
-    st.markdown("- **Aikido** — 🔒 security scan artifact, not runtime")
 
-selected_preset = PRESETS_BY_LABEL.get(preset, PRESETS[0])
-dynamic_sections = None
-run_clicked = False
-if mode == "Custom workflow":
-    with st.form("custom_experiment_form"):
-        st.markdown("### Step 1 — Describe the experiment run")
-        st.caption("Use plain lab language. You do not need to know the app schema: name the workflow, the sample/system, what looked wrong, and what decision you need to make next.")
-        c1, c2 = st.columns(2)
-        workflow = c1.text_input("What workflow or assay was running?", value="ADC conjugation assay")
-        sample = c2.text_input("What sample, batch, model, or system?", value="antibody-drug conjugate batch 17")
-        observations_raw = st.text_area(
-            "What looked wrong? Add one readout/control/anomaly per line.",
-            value="DAR lower than expected\naggregation increased\nHIC shoulder peak",
-            height=130,
-            help="Examples: positive control drifted; edge wells worse; yield dropped after buffer change; lactate rising; NTC amplified late.",
-        )
-        goal = st.text_input("What decision should the next experiment unlock?", value="choose the next discriminating analytical check")
-        constraints = st.text_input("Boundaries / constraints", value="research workflow only; no release or clinical recommendation")
-        run_clicked = st.form_submit_button("Analyze run and produce next action", type="primary")
-        observation = build_custom_experiment_note(
-            workflow=workflow,
-            sample=sample,
-            observations=observations_raw.splitlines(),
-            goal=goal,
-            constraints=constraints,
-        )
-        dynamic_sections = infer_dynamic_sections(observation)
-        st.markdown("#### Interpreted workspace")
-        st.markdown(f"**Workflow family:** {dynamic_sections['likely_workflow_family']}")
-        st.caption(dynamic_sections["surface_copy"])
-        st.code(observation, language="text")
-        card_cols = st.columns(min(3, len(dynamic_sections["section_cards"])))
-        for col, card in zip(card_cols, dynamic_sections["section_cards"]):
-            with col:
-                with st.container(border=True):
-                    st.markdown(f"**{card['title']}**")
-                    st.write(card["body"])
-else:
-    default_obs = get_note(preset)
-    observation = st.text_area("Ambiguous experiment observation", value=default_obs, height=190)
-    st.caption(f"Selected workflow: {selected_preset['category']}")
-
-if "last_result" not in st.session_state:
-    st.session_state["last_result"] = None
-
-if mode == "Preset demo":
-    run_clicked = st.button("Analyze preset run and produce next action", type="primary")
-
-if run_clicked:
-    st.session_state["last_result"] = run_pipeline(observation)
-
-result = st.session_state.get("last_result")
-if result:
-    section_labels = dynamic_sections["ui_labels"] if dynamic_sections else {}
-
-    st.markdown("## Step 2 — What ran, and where did it come from?")
-    st.caption("This provenance board is the anti-presentation layer: it tells the operator what was live, what was generated, and what is only fallback demo logic.")
-    st.dataframe(_provenance_rows(result), hide_index=True, use_container_width=True)
-
-    # 0. Run context — extracted from the input, not a slide.
-    context = result["workflow_context"]
-    with st.expander("Run context extracted from input", expanded=False):
-        st.markdown(f"**Role of this case:** {context['role']}")
-        st.markdown(f"**Target user:** {context['target_user']}")
-        st.markdown(f"**Workflow moment:** {context['workflow_moment']}")
-        st.markdown(f"**Gap:** {context['product_gap']}")
-        st.caption(f"Next validation: {context['next_validation']}")
-
-    st.markdown("## Step 3 — Operator workspace")
-    # 1. Action plan — the product surface judges and scientists should remember.
-    action_plan = result["action_plan"]
-    if dynamic_sections:
-        st.markdown(f"### Inferred workflow family: {dynamic_sections['likely_workflow_family']}")
-    st.subheader(section_labels.get("action_plan", "1. Recommended next actions"))
-    st.caption("Ranked by likely impact, evidence strength, and speed to validation.")
-    plan_cols = st.columns(3)
-    for col, action in zip(plan_cols, action_plan["ranked_actions"]):
-        with col:
+    # --- The answer: next best measurement ---
+    st.markdown("##### 2 · Run this next")
+    measurements = result.get("measurements", [])
+    if measurements:
+        top = measurements[0]
+        st.success(f"**{top['measurement']}**\n\n{top['why']}", icon="🎯")
+        if len(measurements) > 1:
             with st.container(border=True):
-                st.markdown(f"### #{action['rank']} {action['title']}")
-                st.markdown(f"**Impact:** `{action['impact']}` · **Effort:** `{action['effort']}` · **Confidence:** `{action['confidence']}`")
-                st.markdown(f"**Goal:** {action['goal']}")
-                st.markdown(f"**Expected readout:** {action['expected_readout']}")
-                st.caption(f"Risk: {action['risk']}")
+                st.markdown("**Other discriminating measurements**")
+                for m in measurements[1:4]:
+                    st.markdown(f"- **{m['measurement']}** — {m['why']}")
 
-    # 1b. Uncertainty map — turn ambiguity into a decision graph instead of an answer.
-    uncertainty_map = result["uncertainty_map"]
-    with st.container(border=True):
-        st.markdown(f"## {section_labels.get('uncertainty_map', '1b. Uncertainty map')}")
-        st.caption(uncertainty_map["copy"])
-        branch_cols = st.columns(min(3, len(uncertainty_map["branches"])))
-        for col, branch in zip(branch_cols, uncertainty_map["branches"]):
-            with col:
-                st.markdown(f"### {branch['hypothesis']}")
-                st.markdown(f"**Test:** {branch['test']}")
-                st.markdown(f"**Change-my-mind rule:** {branch['what_would_change_our_mind']}")
-                st.caption(branch["human_question"])
-        with st.expander("Decision graph source", expanded=False):
-            st.code(uncertainty_map["mermaid"], language="mermaid")
+    # --- Why: likely explanations ---
+    st.markdown("##### 3 · Why — the likely explanations")
+    st.caption("Possible mechanisms consistent with your readouts. Ranked by plausibility, not confirmed.")
+    for i, h in enumerate(result.get("hypotheses", [])[:3], 1):
+        with st.container(border=True):
+            st.markdown(f"**{i}. {h['mechanism']}**")
+            st.write(h["rationale"])
 
-    # 1c. Scientist Review Mode — visible human-in-the-loop controls.
-    with st.container(border=True):
-        st.markdown(f"## {section_labels.get('review_mode', '1c. Scientist Review Mode')}")
-        st.caption("The human does not just receive an answer — they correct the agent trace. Those corrections become Pioneer training/eval signal.")
-        feedback_label_by_key = result["human_review_options"]
-        feedback_key = st.radio(
-            "Human feedback",
-            list(feedback_label_by_key.keys()),
-            format_func=lambda key: feedback_label_by_key[key],
-            horizontal=True,
-        )
-        feedback_note = st.text_input("Optional missing context / correction", placeholder="e.g. this cell line often shows edge sensitivity after thaw")
-        reviewed_plan = apply_human_feedback(action_plan, feedback_key, feedback_note)
-        st.session_state["reviewed_action_plan"] = reviewed_plan
-        st.info(reviewed_plan["human_decision"])
-        if reviewed_plan.get("human_feedback", {}).get("pioneer_training_event"):
-            st.success(reviewed_plan["human_feedback"]["why_pioneer_cares"])
-        reviewed_top = reviewed_plan["ranked_actions"][0]
-        st.markdown(f"**Reviewed top action:** {reviewed_top['title']} · confidence `{reviewed_top['confidence']}`")
-        if reviewed_top.get("human_note"):
-            st.caption(reviewed_top["human_note"])
+    # --- What needs a human ---
+    st.markdown("##### 4 · What needs a human")
+    st.warning(result["human_question"], icon="⚠️")
 
-    # 1d. Run Outcome — close the loop after the recommended experiment.
-    with st.container(border=True):
-        st.markdown("## 1d. Run Outcome")
-        st.caption("After the scientist runs the next measurement, the result updates branch confidence and creates a labeled Pioneer training row.")
-        outcome = st.selectbox(
-            "Measurement outcome",
-            ["confirmed_branch", "weakened_branch", "inconclusive", "new_anomaly_found"],
-            format_func=lambda x: {
-                "confirmed_branch": "Confirmed selected branch",
-                "weakened_branch": "Weakened selected branch",
-                "inconclusive": "Inconclusive",
-                "new_anomaly_found": "New anomaly found",
-            }[x],
-        )
-        outcome_note = st.text_input("Outcome note", placeholder="e.g. old reagent lot rescued the signal")
-        outcome_result = apply_run_outcome(reviewed_plan, uncertainty_map, result["pioneer_structured"], outcome, note=outcome_note)
-        st.markdown(f"**What next:** {outcome_result['what_next']}")
-        st.dataframe(
-            [
-                {
-                    "Branch": update["branch"],
-                    "Status": update["status"],
-                    "Δ confidence": update["delta"],
-                    "New confidence": update["new_confidence"],
-                }
-                for update in outcome_result["branch_updates"]
-            ],
-            hide_index=True,
-        )
-        with st.expander("Pioneer training row from outcome", expanded=False):
-            st.json(outcome_result["pioneer_training_row"])
-
-    with st.container(border=True):
-        st.markdown("### Partner-ready summary")
-        for bullet in action_plan["partner_summary"]:
-            st.markdown(f"- {bullet}")
-        st.markdown("### What we still do not know")
-        for unknown in action_plan["what_we_do_not_know"]:
-            st.markdown(f"- {unknown}")
-        st.info(action_plan["human_decision"])
-
-    # 2. Agent orchestration trace
-    st.subheader("2. Agent orchestration trace")
-    cols = st.columns(5)
-    for col, step in zip(cols, result["trace"]):
-        with col:
-            st.markdown(f"**{step['agent']}**")
-            st.write(step["summary"])
-
-    # 2. Uncertainty bottleneck — the core differentiator; make it impossible to miss
-    bottleneck = result["uncertainty_bottleneck"]
-    with st.container(border=True):
-        st.markdown("## ⚠️ The Uncertainty Bottleneck")
-        st.markdown(f"### {bottleneck['headline']}")
-        st.warning(bottleneck["why_it_matters"], icon="🧭")
-        st.markdown(f"**Decision to unlock:** {bottleneck['decision_to_unlock']}")
-        st.caption(
-            "This is the product's core claim: it does not infer biological truth from surface signals — "
-            "it names what cannot be known yet and the measurement that would resolve it fastest."
-        )
-
-    # 3. Synthesized troubleshooting memo (Gemini live or deterministic fallback)
-    st.subheader("3. Troubleshooting memo")
-    synthesis = result["synthesis"]
-    st.caption(f"Memo synthesis — {_badge(synthesis['mode'] == 'live')} · {synthesis['detail']}")
-    if synthesis.get("text"):
-        st.markdown(synthesis["text"])
-
-    # 4. Structured memo detail
-    left, right = st.columns([1, 1])
-    with left:
-        st.markdown("### Structured observations")
-        st.json(result["structured_observations"])
-        st.markdown("### Ranked failure hypotheses")
-        for idx, h in enumerate(result["hypotheses"], 1):
-            st.markdown(f"{idx}. **{h['mechanism']}** — {h['rationale']}")
-    with right:
-        st.markdown("### Next best measurements")
-        for idx, m in enumerate(result["measurements"], 1):
-            st.markdown(f"{idx}. **{m['measurement']}** — {m['why']}")
-        st.markdown("### Human review question")
-        st.info(result["human_question"])
-
-    # 5. Evidence quality ladder, evidence and caveats
-    st.markdown("### Evidence Quality Ladder")
-    st.caption("Evidence is graded for directness and safe use before it influences the next experiment.")
-    ladder_cols = st.columns(min(4, max(1, len(result["evidence_ladder"]))))
-    for col, tier in zip(ladder_cols, result["evidence_ladder"]):
-        with col:
-            st.metric(tier["label"], tier["count"])
-            st.caption(tier["safe_use"])
-    st.markdown("### Evidence and caveats")
-    for e in result["evidence"]:
-        title = e["source"] + ("  ·  🟢 live (Tavily)" if e.get("live") else "")
-        with st.expander(title, expanded=not e.get("live")):
-            st.markdown(f"**Claim:** {e['claim']}")
-            st.markdown(
-                f"**Quality:** `{e.get('evidence_type', 'unknown')}` · `{e.get('relevance', 'unknown')}` · strength `{e.get('strength', '?')}/5"
+    # --- Evidence with references ---
+    st.markdown("##### 5 · Evidence & references")
+    ev_src = "🟢 live web search via **Tavily** + curated references" if tavily_live else "curated reference library"
+    st.caption(f"Source: {ev_src}. Treat as leads to verify, not proof.")
+    for e in result.get("evidence", []):
+        with st.container(border=True):
+            head = e["source"] + ("  ·  🟢 live (Tavily)" if e.get("live") else "")
+            st.markdown(f"**{head}**")
+            st.write(e["claim"])
+            st.caption(
+                f"`{e.get('evidence_type', '—')}` · relevance `{e.get('relevance', '—')}` "
+                f"· strength `{e.get('strength', '?')}/5`"
             )
-            st.markdown(f"**Safe use:** {e.get('safe_use', 'Hypothesis generation only.')}")
             if e.get("url"):
-                st.markdown(f"[source]({e['url']})")
-            st.caption(f"Caveat: {e['caveat']}")
+                st.markdown(f"[Open source ↗]({e['url']})")
+            st.caption(f"⚠️ {e['caveat']}")
 
-    # 6. Pioneer structured extraction artifact
-    pioneer = result["pioneer_structured"]
-    st.subheader(section_labels.get("pioneer", "4. Pioneer structured extraction"))
-    pioneer_badge = _BADGE_TOKENS["live"] if pioneer["mode"] == "live" else _BADGE_TOKENS["artifact"]
-    st.caption(
-        f"Side-challenge artifact — {pioneer_badge} · {pioneer['detail']}  "
-        "Pioneer is the structured extraction layer: a deterministic GLiNER2-style path turns a messy note into typed entities, relations, and safety-boundary flags instead of an opaque generic LLM call."
-    )
+    # --- Memo (Gemini) ---
+    st.markdown("##### 6 · Troubleshooting memo")
+    memo = result["synthesis"]
+    memo_src = "🟢 synthesized live by **Gemini**" if gemini_live else "⚪ deterministic memo (no Gemini key set)"
+    st.caption(f"{memo_src} · {memo.get('detail', '')}")
+    if memo.get("text"):
+        with st.container(border=True):
+            st.markdown(memo["text"])
 
-    st.markdown("**Signal → hypothesis → next-measurement triples**")
-    st.dataframe(
-        [
-            {
-                "Observation": t["observation"],
-                "Possible mechanism": t["failure_hypothesis"],
-                "Next measurement": t["next_measurement"],
-                "Confidence": t.get("confidence"),
-            }
-            for t in result["pioneer_triples"]
-        ],
-        hide_index=True,
-    )
+    # --- How it worked (agents + partner APIs + Pioneer extraction) ---
+    st.divider()
+    with st.expander("🔧 How it worked — agents, partner APIs & structured extraction"):
+        st.markdown("**Agent pipeline**")
+        for step in result.get("trace", []):
+            st.markdown(f"- **{step['agent']}** — {step['summary']}")
 
-    tri_left, tri_right = st.columns([1, 1])
-    with tri_left:
-        st.markdown("**Extracted observations**")
-        for o in pioneer["observations"]:
-            st.markdown(f"- `{o['label']}` — {o['trend']}")
-        flags = pioneer["safety_flags"]
-        st.markdown("**Safety-boundary flags**")
-        st.markdown(f"- research workflow only: `{flags['research_workflow_only']}`")
-        st.markdown(f"- needs human review: `{flags['needs_human_review']}`")
-        clinical_icon = "🚫" if flags["clinical_claim_risk"] else "✅"
-        st.markdown(f"- clinical-claim risk: `{flags['clinical_claim_risk']}` {clinical_icon}")
-        st.markdown(f"- insufficient evidence: `{flags['insufficient_evidence']}`")
-    with tri_right:
-        st.markdown("**Relations (raw extractor output)**")
-        st.json(pioneer["relations"])
+        st.markdown("---")
+        st.markdown("**Partner technologies** (live vs fallback, shown honestly)")
+        badge_map = {"live": "🟢 LIVE", "artifact": "🧩 deterministic", "fallback": "⚪ fallback", "docs": "🔒 docs"}
+        for item in result.get("partner_trace", []):
+            badge = badge_map.get(item.get("badge", ""), "🟢 LIVE" if item.get("live") else "⚪ fallback")
+            st.markdown(f"- {badge} · **{item['tool']}** — {item['role']}")
+            if item.get("status"):
+                st.caption(item["status"])
 
-    # 6b. Experiment memory / Pioneer learning loop
-    reviewed_plan_for_memory = st.session_state.get("reviewed_action_plan", result["action_plan"])
-    memory = build_experiment_memory(result["structured_observations"], reviewed_plan_for_memory, pioneer)
-    training_examples = training_examples_from_memory(memory)
-    st.subheader(section_labels.get("memory", "4b. Experiment memory / Pioneer learning loop"))
-    st.caption(memory["learning_loop"])
-    m1, m2, m3, m4 = st.columns(4)
-    stats = memory["stats"]
-    m1.metric("Stored runs", stats["stored_runs"])
-    m2.metric("Accepted/resolved", stats["accepted_or_resolved"])
-    m3.metric("Pending/review", stats["pending_or_review_needed"])
-    m4.metric("Relations this run", stats["extracted_relations_this_run"])
-    st.dataframe(
-        [
-            {
-                "Source": run["source"],
-                "Workflow": run["workflow"],
-                "Ambiguous signal": run["ambiguous_signal"],
-                "Human branch": run["chosen_branch"],
-                "Status": run["status"],
-                "Pioneer value": run["pioneer_value"],
-            }
-            for run in memory["runs"]
-        ],
-        hide_index=True,
-    )
-    with st.expander("Example training rows produced from memory", expanded=False):
-        st.json(training_examples[:3])
-
-    # 7. Partner technology trace with live/fallback status
-    st.subheader("5. Partner technology trace")
-    st.caption("Live vs fallback is shown honestly — the demo never hides which integrations ran.")
-    for item in result["partner_trace"]:
-        badge = _BADGE_TOKENS.get(item.get("badge", ""), _badge(item["live"]))
-        st.markdown(f"- {badge} **{item['tool']}** — {item['role']}.")
-        st.caption(f"    {item['status']}")
-
-    # 8. Business impact
-    st.subheader("6. Business impact")
-    for item in result["business_impact"]:
-        st.markdown(f"- {item}")
+        st.markdown("---")
+        st.markdown("**Pioneer — structured extraction** (signal → possible mechanism → next measurement)")
+        triples = result.get("pioneer_triples", [])
+        if triples:
+            st.dataframe(
+                [
+                    {
+                        "Observation": t["observation"],
+                        "Possible mechanism": t["failure_hypothesis"],
+                        "Next measurement": t["next_measurement"],
+                        "Confidence": t.get("confidence"),
+                    }
+                    for t in triples
+                ],
+                hide_index=True,
+                use_container_width=True,
+            )
+        flags = result["pioneer_structured"].get("safety_flags", {})
+        if flags:
+            st.caption(
+                f"Safety flags — research-only: `{flags.get('research_workflow_only')}` · "
+                f"needs human review: `{flags.get('needs_human_review')}` · "
+                f"clinical-claim risk: `{flags.get('clinical_claim_risk')}`"
+            )
+else:
+    st.caption("Load an example or paste a note, then press **Analyze** to see the result.")

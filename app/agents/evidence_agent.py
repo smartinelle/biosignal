@@ -10,9 +10,10 @@ def retrieve_evidence(structured: dict, hypotheses: list[dict]) -> list[dict]:
     if "molecular assay" in domain:
         return [
             {
-                "source": "qPCR/ddPCR troubleshooting heuristics",
+                "source": "MIQE qPCR guidelines (Bustin et al., Clin Chem 2009)",
                 "claim": "Control behavior, inhibition checks, melt/cluster shape, and replicate spread must be resolved before interpreting target abundance.",
-                "caveat": "Heuristic support only; does not establish gene-expression truth from one compromised run.",
+                "caveat": "Reporting/QC standard; does not establish gene-expression truth from one compromised run.",
+                "url": "https://doi.org/10.1373/clinchem.2008.112797",
             },
             {
                 "source": "General molecular assay QC practice",
@@ -43,9 +44,10 @@ def retrieve_evidence(structured: dict, hypotheses: list[dict]) -> list[dict]:
                 "caveat": "Do not infer contamination or biological drift without direct testing and reference comparison.",
             },
             {
-                "source": "General wet-lab QC practice",
+                "source": "Cell line use guidelines (Geraghty et al., Br J Cancer 2014)",
                 "claim": "Mycoplasma/contamination checks, media-lot comparison, incubator review, and reference-stock comparison are high-leverage first checks.",
                 "caveat": "These checks narrow uncertainty; they do not establish line quality or suitability by themselves.",
+                "url": "https://doi.org/10.1038/bjc.2014.166",
             },
         ]
 
@@ -66,21 +68,24 @@ def retrieve_evidence(structured: dict, hypotheses: list[dict]) -> list[dict]:
     if any(token in text for token in ["potency assay", "positive control", "plate edge", "edge wells", "reagent lot"]):
         return [
             {
-                "source": "Assay troubleshooting heuristics",
+                "source": "Preclinical reproducibility standards (Begley & Ellis, Nature 2012)",
                 "claim": "Conflicting controls, edge-well effects, and reagent-lot changes often indicate technical or procedural causes that must be resolved before interpreting a biological effect.",
-                "caveat": "Heuristic support only; the system should recommend discriminating checks rather than invalidate or accept the run automatically.",
+                "caveat": "Supports the workflow; does not invalidate or accept this specific run — recommend discriminating checks instead.",
+                "url": "https://doi.org/10.1038/483531a",
             },
             {
-                "source": "General biotech R&D reproducibility literature",
+                "source": "Reproducibility survey (Baker, Nature 2016)",
                 "claim": "Irreproducibility and failed replication in preclinical research are often driven by protocol, reagent, model, and analysis variability.",
                 "caveat": "Motivates the workflow, but does not identify the cause in this specific assay.",
+                "url": "https://doi.org/10.1038/533452a",
             },
         ]
     return [
         {
-            "source": "Madissoon et al., Tissue Stability Cell Atlas / PRJEB31843",
+            "source": "Madissoon et al., Tissue Stability Cell Atlas (Genome Biology 2020) / PRJEB31843",
             "claim": "Cold-preserved human lung, spleen and esophagus scRNA-seq showed relative stability up to ~24h, with stronger degradation/quality signals by 72h in some tissues.",
             "caveat": "Indirect evidence: not necessarily the same organ, protocol, or decision context. Use as hypothesis support, not prediction.",
+            "url": "https://doi.org/10.1186/s13059-019-1906-x",
         },
         {
             "source": "General preservation physiology",
