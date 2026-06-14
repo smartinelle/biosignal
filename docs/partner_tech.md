@@ -13,6 +13,18 @@ partner trace) rather than hiding it in the backend.
 
 The demo runs fully on the fallbacks — keys only upgrade the experience.
 
+### Judge-proof Pioneer framing
+
+Pioneer is the structured extraction layer in the product, not a generic chat endpoint. The comparison below is the story to tell:
+
+| Path | Role | Strength | Weakness | Best use |
+|---|---|---|---|---|
+| Generic LLM call | Free-form parsing / synthesis | Flexible for rough drafts | Non-deterministic, harder to evaluate | Rapid prototyping |
+| Deterministic fallback extractor | Shipped structured extractor | Stable, repeatable, safe | Less expressive than a tuned model | Default demo + benchmark baseline |
+| Pioneer GLiNER2 fine-tuned path | Structured extraction layer | Small-model, schema-first, deployable | Requires a checkpoint + evals | Side-challenge path |
+
+The benchmark schema should report: valid schema, relation extraction, repeatability, and safety flags.
+
 ## Gemini (`app/llm.py`)
 
 Two live routes plus a deterministic fallback:
@@ -54,8 +66,8 @@ synthetic-data plan, and eval plan.
 ## Aikido
 
 No app runtime key. Deliverable: connect the public GitHub repo to Aikido, run
-the scan, and include the report screenshot in the submission (see
-`docs/submission_checklist.md`).
+the scan, and attach `docs/assets/aikido-security-report.png` to the submission
+(see `docs/submission_checklist.md` and README).
 
 ## fal (optional, not central)
 

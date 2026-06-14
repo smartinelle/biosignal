@@ -55,8 +55,7 @@ curl -fsS --retry-connrefused --retry 15 --retry-delay 1 http://127.0.0.1:8501/_
 ### Aikido — 1000€ side challenge
 - [ ] Free Aikido account created.
 - [ ] Public repo connected to Aikido.
-- [ ] Scan run; **screenshot of the security report with issue categories**
-      saved under `docs/assets/` and referenced in the submission.
+- [ ] Scan run; **screenshot of the security report with issue categories** attached as `docs/assets/aikido-security-report.png` **before submission** and referenced from the README/submission docs.
 
 ## Do-not-claim guardrails (keep in the pitch)
 

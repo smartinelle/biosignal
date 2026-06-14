@@ -44,13 +44,13 @@ def _key_present(name: str) -> bool:
 
 
 st.title("🧬 BioSignal Navigator")
-st.caption("Agent-human troubleshooting for ambiguous biotech R&D experiments.")
+st.caption("General biotech R&D troubleshooting for ambiguous experiments.")
 
 st.markdown(
     """
     ### From messy readouts to the next best experiment
-    Biotech teams lose days when living-system experiments fail ambiguously. BioSignal Navigator turns
-    observations into failure hypotheses, evidence, next measurements, and a human review question.
+    Biotech teams lose days when experiments fail ambiguously. BioSignal Navigator turns
+    observations into evidence-backed hypotheses, next measurements, and a human review question.
     """
 )
 
@@ -58,11 +58,11 @@ with st.container(border=True):
     st.markdown("### Product shape")
     c1, c2, c3 = st.columns(3)
     c1.markdown("**Product category**  \nbiotech R&D troubleshooting")
-    c2.markdown("**Demo use cases**  \npreservation, organoids, organ-on-chip")
-    c3.markdown("**Core workflow**  \ninterpretation + next-measurement selection")
+    c2.markdown("**Demo use cases**  \nassay, qPCR/ddPCR, protein, cell culture")
+    c3.markdown("**Thesis anchor**  \nliving tissue systems as one use case")
 
 st.info(
-    "Research workflow only — not diagnosis, treatment, viability prediction, or clinical decision support.",
+    "Research workflow only — not diagnosis, treatment, viability prediction, or clinical decision support. Human review required.",
     icon="🛡️",
 )
 
@@ -87,6 +87,7 @@ with st.sidebar:
     st.markdown("- **Aikido** — 🔒 security scan (submission docs)")
 
 selected_preset = PRESETS_BY_LABEL.get(preset, PRESETS[0])
+dynamic_sections = None
 if mode == "Custom workflow":
     with st.container(border=True):
         st.markdown("### Design your own experiment workflow")
@@ -108,7 +109,14 @@ if mode == "Custom workflow":
             constraints=constraints,
         )
         dynamic_sections = infer_dynamic_sections(observation)
-        st.caption(f"Dynamic workflow family: {dynamic_sections['likely_workflow_family']}")
+        st.markdown(f"**Inferred workflow family:** {dynamic_sections['likely_workflow_family']}")
+        st.caption(dynamic_sections["surface_copy"])
+        card_cols = st.columns(min(3, len(dynamic_sections["section_cards"])))
+        for col, card in zip(card_cols, dynamic_sections["section_cards"]):
+            with col:
+                with st.container(border=True):
+                    st.markdown(f"**{card['title']}**")
+                    st.write(card["body"])
         st.caption("Recommended UI sections: " + ", ".join(dynamic_sections["recommended_sections"]))
 else:
     default_obs = get_note(preset)
@@ -123,6 +131,7 @@ if st.button("Run agent workflow", type="primary"):
 
 result = st.session_state.get("last_result")
 if result:
+    section_labels = dynamic_sections["ui_labels"] if dynamic_sections else {}
 
     # 0. Product context — the research loop translated into the product now.
     context = result["workflow_context"]
@@ -136,7 +145,9 @@ if result:
 
     # 1. Action plan — the product surface judges and scientists should remember.
     action_plan = result["action_plan"]
-    st.subheader("1. Recommended next actions")
+    if dynamic_sections:
+        st.markdown(f"### Inferred workflow family: {dynamic_sections['likely_workflow_family']}")
+    st.subheader(section_labels.get("action_plan", "1. Recommended next actions"))
     st.caption("Ranked by likely impact, evidence strength, and speed to validation.")
     plan_cols = st.columns(3)
     for col, action in zip(plan_cols, action_plan["ranked_actions"]):
@@ -151,7 +162,7 @@ if result:
     # 1b. Uncertainty map — turn ambiguity into a decision graph instead of an answer.
     uncertainty_map = result["uncertainty_map"]
     with st.container(border=True):
-        st.markdown("## 1b. Uncertainty map")
+        st.markdown(f"## {section_labels.get('uncertainty_map', '1b. Uncertainty map')}")
         st.caption(uncertainty_map["copy"])
         branch_cols = st.columns(min(3, len(uncertainty_map["branches"])))
         for col, branch in zip(branch_cols, uncertainty_map["branches"]):
@@ -165,7 +176,7 @@ if result:
 
     # 1c. Scientist Review Mode — visible human-in-the-loop controls.
     with st.container(border=True):
-        st.markdown("## 1c. Scientist Review Mode")
+        st.markdown(f"## {section_labels.get('review_mode', '1c. Scientist Review Mode')}")
         st.caption("The human does not just receive an answer — they correct the agent trace. Those corrections become Pioneer training/eval signal.")
         feedback_label_by_key = result["human_review_options"]
         feedback_key = st.radio(
@@ -291,12 +302,11 @@ if result:
 
     # 6. Pioneer structured extraction artifact
     pioneer = result["pioneer_structured"]
-    st.subheader("4. Pioneer structured extraction")
+    st.subheader(section_labels.get("pioneer", "4. Pioneer structured extraction"))
     pioneer_badge = _BADGE_TOKENS["live"] if pioneer["mode"] == "live" else _BADGE_TOKENS["artifact"]
     st.caption(
         f"Side-challenge artifact — {pioneer_badge} · {pioneer['detail']}  "
-        "A deterministic GLiNER2-style extractor turns a messy note into typed entities, relations, and "
-        "safety-boundary flags instead of an opaque LLM call."
+        "Pioneer is the structured extraction layer: a deterministic GLiNER2-style path turns a messy note into typed entities, relations, and safety-boundary flags instead of an opaque generic LLM call."
     )
 
     st.markdown("**Signal → hypothesis → next-measurement triples**")
@@ -333,7 +343,7 @@ if result:
     reviewed_plan_for_memory = st.session_state.get("reviewed_action_plan", result["action_plan"])
     memory = build_experiment_memory(result["structured_observations"], reviewed_plan_for_memory, pioneer)
     training_examples = training_examples_from_memory(memory)
-    st.subheader("4b. Experiment memory / Pioneer learning loop")
+    st.subheader(section_labels.get("memory", "4b. Experiment memory / Pioneer learning loop"))
     st.caption(memory["learning_loop"])
     m1, m2, m3, m4 = st.columns(4)
     stats = memory["stats"]

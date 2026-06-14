@@ -86,10 +86,33 @@ class OutcomeEvidenceBuilderTests(unittest.TestCase):
         self.assertIn("ADC conjugation assay", note)
         self.assertIn("DAR lower than expected", note)
         self.assertIn("research workflow only", note)
+        self.assertEqual(sections["family_key"], "analytical_chemistry_bioconjugation")
         self.assertIn("analytical chemistry", sections["likely_workflow_family"])
         self.assertIn("evidence_quality", sections["recommended_sections"])
         self.assertIn("outcome_loop", sections["recommended_sections"])
+        self.assertGreaterEqual(len(sections["section_cards"]), 3)
+        self.assertIn("workflow", sections["surface_copy"].lower())
 
+    def test_custom_experiment_builder_switches_workflow_family_and_ui_cards(self):
+        assay_note = build_custom_experiment_note(
+            workflow="qPCR assay",
+            sample="RNA prep batch 4",
+            observations=["Ct shifted", "NTC amplified"],
+            goal="separate contamination from assay drift",
+        )
+        tissue_note = build_custom_experiment_note(
+            workflow="ex-vivo perfusion",
+            sample="human tissue slice",
+            observations=["oxygenation uncertain", "vascular resistance increasing"],
+            goal="choose the next discriminating tissue-state measurement",
+        )
 
-if __name__ == "__main__":
-    unittest.main()
+        assay_sections = infer_dynamic_sections(assay_note)
+        tissue_sections = infer_dynamic_sections(tissue_note)
+
+        self.assertEqual(assay_sections["family_key"], "molecular_assay")
+        self.assertEqual(tissue_sections["family_key"], "living_tissue_systems")
+        self.assertIn("assay controls", assay_sections["surface_copy"].lower())
+        self.assertIn("tissue-state", tissue_sections["surface_copy"].lower())
+        self.assertIn("review", assay_sections["ui_labels"]["review_mode"].lower())
+        self.assertIn("review", tissue_sections["ui_labels"]["review_mode"].lower())

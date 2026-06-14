@@ -4,7 +4,7 @@ Status: v1 — hackathon video and finalist pitch package.
 
 ## Positioning
 
-BioSignal Navigator is a **general biotech R&D troubleshooting workspace** that turns messy experimental runs into evidence-backed hypotheses, ranked next steps, and partner-ready summaries.
+BioSignal Navigator is a **general biotech R&D troubleshooting workspace** that turns messy experimental runs into evidence-backed hypotheses, ranked next steps, and partner-ready summaries. Tissue preservation is one anchor use case, not the product headline.
 
 It is not a tissue-engineering niche. Tissue preservation, organoids, and organ-on-chip are proof workflows inside a broader category.
 
@@ -18,7 +18,7 @@ Alternates:
 
 - “The troubleshooting layer for biotech R&D teams.”
 - “From failed runs to ranked next steps, with evidence and uncertainty built in.”
-- “A decision workspace for diagnosing why biotech experiments underperform — research-use only.”
+- “A decision workspace for debugging why biotech experiments underperform — research-use only.”
 - “Evidence first, answers second.”
 
 ## 2-minute video script
@@ -121,7 +121,7 @@ Use assay signal collapse as the broad demo:
 4. reagent lot change;
 5. ranked action plan.
 
-Then flash preservation/organoid/OoC to show thesis resonance and generality.
+Then flash preservation/organoid/OoC to show thesis resonance and generality, while keeping the opening frame squarely on general biotech R&D troubleshooting.
 
 ### 2:15–3:15 — Technical architecture
 
@@ -149,7 +149,8 @@ Reinforce:
 - research-only safety;
 - uncertainty-first outputs;
 - partner-ready action plan;
-- extensible product category.
+- extensible product category;
+- Pioneer as the structured extraction layer.
 
 Close line:
 
@@ -225,7 +226,7 @@ Avoid:
 - “predicts viability”;
 - “clinical decision support”;
 - “decides whether to discard”;
-- “diagnoses the issue” in a medical sense;
+- “claims to diagnose the issue” in a medical sense;
 - “knows the true biological state.”
 
 Use instead:

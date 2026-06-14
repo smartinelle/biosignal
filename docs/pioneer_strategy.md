@@ -32,7 +32,7 @@ Preferred base model candidates:
 
 The pitch:
 
-> Instead of calling a large general-purpose LLM every time we need structured observations, BioSignal Navigator fine-tunes a small deterministic extractor for living-tissue troubleshooting notes. It produces stable entities, classifications, and relations that downstream agents can reason over.
+> Instead of calling a large general-purpose LLM every time we need structured observations, BioSignal Navigator uses Pioneer as the structured extraction layer: a fine-tuned small model that produces stable entities, classifications, relations, and safety flags that downstream agents can reason over.
 
 ## Concrete model task
 
@@ -146,6 +146,15 @@ Training examples should cover:
 
 The eval should prove that the fine-tuned model replaces or improves a generic LLM call for a specific subtask.
 
+### Benchmark fields
+
+| Field | What it checks |
+|---|---|
+| `valid_schema` | Output parses to the expected JSON / label schema |
+| `relation_extraction` | Correctness of observation→mechanism→measurement links |
+| `repeatability` | Same input yields the same structured result across runs |
+| `safety_flags` | Detection of clinical-claim risk and human-review requirements |
+
 Suggested metrics:
 
 - valid structured output rate
@@ -206,7 +215,7 @@ Short version:
 
 Long version:
 
-> BioSignal Navigator coordinates agents around ambiguous living-tissue experiments. The first step is turning noisy lab notes into reliable structure. Pioneer is used for the narrow structured-extraction layer: a fine-tuned GLiNER2 model extracts macro signals, candidate mechanisms, assays, uncertainty flags, and relations. Gemini can still synthesize the final memo, Tavily can retrieve evidence, and humans still make judgments — but Pioneer owns the deterministic schema extraction that makes the downstream workflow robust.
+> BioSignal Navigator coordinates agents around ambiguous biotech experiments. The first step is turning noisy lab notes into reliable structure. Pioneer owns the structured-extraction layer: a fine-tuned GLiNER2 model extracts macro signals, candidate mechanisms, assays, uncertainty flags, safety flags, and relations. Gemini can still synthesize the final memo, Tavily can retrieve evidence, and humans still make judgments — but Pioneer makes the downstream workflow robust and measurable.
 
 ## What not to do
 

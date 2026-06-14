@@ -12,7 +12,9 @@ AI agents are entering healthcare through concrete workflows: documentation, cod
 
 The first demo vertical is **living tissue systems**: tissue preservation, organoids, organ-on-chip, and tissue engineering QC. This keeps the product venture-shaped while preserving a sharp thesis demo.
 
-BioSignal Navigator is **not** a diagnostic, treatment, transplant, or clinical decision system. It is a research workflow tool for experiment troubleshooting.
+BioSignal Navigator is **not** a diagnostic, treatment, transplant, or clinical decision system. It is a general biotech R&D troubleshooting workspace for experiment debugging.
+
+The first demo vertical is living tissue systems, but it is only one use case inside a broader product category.
 
 ## Why this can be a product
 
@@ -45,7 +47,7 @@ Required minimum: 3 partner technologies. This repo makes partner use visible in
 - **Google Gemini:** caveated troubleshooting-memo synthesis. Works with a native Gemini key (`AIza...`) or via **OpenRouter** (`sk-or...`, auto-detected) — see `docs/partner_tech.md`.
 - **Tavily:** live literature / source retrieval for evidence cards when `TAVILY_API_KEY` is configured.
 - **Pioneer:** deterministic GLiNER2-style structured extractor (signal → hypothesis → measurement triples + safety flags). Runs with no key; goes live with `PIONEER_API_KEY` **and** a deployed `PIONEER_MODEL_ID`.
-- **Aikido:** security scan path for side challenge submission.
+- **Aikido:** security scan path for side challenge submission. The required screenshot should be attached as `docs/assets/aikido-security-report.png` before submission; do not fabricate it.
 
 The demo remains fully usable without API keys via deterministic fallbacks. When keys are present, the UI shows a 🟢 LIVE vs ⚪ Fallback badge per partner and an honest partner trace. See `docs/architecture.md`, `docs/partner_tech.md`, and `docs/submission_checklist.md`.
 

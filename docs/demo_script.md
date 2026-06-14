@@ -10,7 +10,7 @@ BioSignal Navigator is a **general biotech R&D troubleshooting workspace**. It t
 
 Say clearly:
 
-> This is research workflow software — not diagnosis, treatment, viability prediction, transplant guidance, or batch-disposition software.
+> This is research workflow software — not diagnosis, treatment, viability prediction, transplant guidance, or batch-disposition software. It is a general biotech R&D troubleshooting workspace, with tissue preservation as one use case.
 
 ## 0:25–0:55 — Broad demo workflow
 
@@ -38,7 +38,7 @@ Point to:
 
 Narration:
 
-> The output is operational. It tells the scientist what to check next, why now, what readout to expect, and what remains unknown.
+> The output is operational. It tells the scientist what to check next, why now, what readout to expect, and what remains unknown — then asks for human review.
 
 ## 1:20–1:35 — Generality
 
