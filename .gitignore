@@ -4,6 +4,10 @@ __pycache__/
 .DS_Store
 .pytest_cache/
 
+# Runtime database (local recorded outcomes / training rows)
+*.db
+data/*.db
+
 # --- Secrets: never commit credentials or keys --------------------------------
 .env
 .env.*

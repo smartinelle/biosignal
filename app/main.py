@@ -28,8 +28,10 @@ from agents.outcome_loop import apply_run_outcome
 
 try:
     from presets import PRESETS
+    import store
 except ModuleNotFoundError:  # package import during verification
     from app.presets import PRESETS
+    from app import store
 
 
 st.set_page_config(page_title="BioSignal Navigator", page_icon="🧬", layout="centered")
@@ -44,6 +46,7 @@ STEPS = [
 REFS = [
     ("tree", "🌳 Decision tree"),
     ("evidence", "📚 Evidence & resources"),
+    ("dataset", "🗄️ Training data"),
     ("how", "🔧 How it worked"),
 ]
 STEP_IDS = [s[0] for s in STEPS]
@@ -266,6 +269,27 @@ def screen_decide() -> None:
         st.caption(f"Why plausible: {b['why_plausible']}")
         st.caption(f"What would change our mind: {b['what_would_change_our_mind']}")
 
+    # Keep the literature that motivates the decision visible inline (not hidden).
+    evidence = result.get("evidence", [])
+    if evidence:
+        st.markdown(f"📚 **Supporting papers** ({len(evidence)})")
+        for e in evidence[:2]:
+            tier = f" · {e['source_tier']}" if e.get("source_tier") else ""
+            link = f" — [open ↗]({e['url']})" if e.get("url") else ""
+            st.markdown(f"- {e['source']}{tier}{link}")
+        if len(evidence) > 2:
+            with st.expander(f"See all {len(evidence)} references"):
+                st.dataframe(
+                    [
+                        {"Source": e["source"], "Type": e.get("source_tier") or e.get("evidence_type", "—"),
+                         "Strength": f"{e.get('strength','?')}/5", "Link": e.get("url", "")}
+                        for e in evidence
+                    ],
+                    hide_index=True, use_container_width=True,
+                    column_config={"Link": st.column_config.LinkColumn("Link")},
+                )
+        st.caption("Full details on the 📚 Evidence & resources screen.")
+
     c1, c2 = st.columns(2)
     c1.button("← Back", on_click=go, args=("describe",), use_container_width=True)
     c2.button("I ran this measurement  →", type="primary", on_click=go, args=("results",), use_container_width=True)
@@ -300,6 +324,16 @@ def screen_results() -> None:
         )
         st.session_state.outcome["note"] = note
         st.session_state.outcome["tested_branch"] = b["hypothesis"]
+        # Persist as a labeled Pioneer training row for future fine-tuning.
+        store.record_event(
+            round=st.session_state.round,
+            domain=result["structured_observations"].get("domain", ""),
+            tested_branch=b["hypothesis"],
+            outcome=outcome_key,
+            outcome_note=note,
+            what_next=st.session_state.outcome["what_next"],
+            training_row=st.session_state.outcome["pioneer_training_row"],
+        )
         st.session_state.screen = "next"
         st.rerun()
 
@@ -421,6 +455,38 @@ def screen_evidence() -> None:
     st.button("← Back to workflow", on_click=go, args=("decide",))
 
 
+def screen_dataset() -> None:
+    st.subheader("🗄️ Training data")
+    st.caption(
+        "Every recorded outcome is persisted as a labeled Pioneer training row. The workflow "
+        "accumulates a real dataset that can fine-tune the extractor/router over time."
+    )
+    events = store.fetch_events()
+    st.metric("Recorded training examples", store.count())
+    if not events:
+        st.info("No recorded results yet. Run a measurement and record its result in step 3 to add the first example.")
+    else:
+        st.dataframe(
+            [
+                {"When": e["ts"], "Round": e["round"], "Domain": e["domain"],
+                 "Tested": e["tested_branch"], "Outcome": OUTCOME_LABELS.get(e["outcome"], e["outcome"]),
+                 "Notes": e["outcome_note"]}
+                for e in events
+            ],
+            hide_index=True, use_container_width=True,
+        )
+        jsonl = store.export_jsonl()
+        st.download_button(
+            "⬇️ Export dataset (JSONL for fine-tuning)",
+            data=jsonl, file_name="biosignal_training.jsonl", mime="application/jsonl",
+            use_container_width=True,
+        )
+        with st.expander("Preview a training row"):
+            import json as _json
+            st.json(_json.loads(events[0]["training_row"]) if events[0].get("training_row") else {})
+    st.button("← Back to workflow", on_click=go, args=("decide",))
+
+
 def screen_how() -> None:
     result = st.session_state.result
     if result is None:
@@ -465,6 +531,7 @@ ROUTES = {
     "next": screen_next,
     "tree": screen_tree,
     "evidence": screen_evidence,
+    "dataset": screen_dataset,
     "how": screen_how,
 }
 ROUTES.get(st.session_state.screen, screen_describe)()
