@@ -1,0 +1,24 @@
+# Hardened defaults for BioSignal Navigator.
+# Committed on purpose; secrets never go here — use .env / .streamlit/secrets.toml (gitignored).
+
+[server]
+# Bind to loopback by default so the app is not exposed on the LAN.
+# Override only when you intentionally need remote access:
+#   streamlit run app/main.py --server.address 0.0.0.0
+address = "127.0.0.1"
+headless = true
+# Cross-site request forgery + cross-origin protections (Streamlit defaults; pinned explicitly).
+enableXsrfProtection = true
+enableCORS = true
+# No file-upload widget is used; keep the cap small to limit abuse if one is added.
+maxUploadSize = 5
+# Static file serving is off (no arbitrary file exposure).
+enableStaticServing = false
+
+[browser]
+# Do not phone home with usage telemetry.
+gatherUsageStats = false
+
+[global]
+# Surface deprecation/security warnings during development.
+showWarningOnDirectExecution = true

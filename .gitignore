@@ -1,10 +1,23 @@
 .venv/
 __pycache__/
 *.pyc
-.env
-.streamlit/secrets.toml
 .DS_Store
 .pytest_cache/
+
+# --- Secrets: never commit credentials or keys --------------------------------
+.env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+id_rsa
+id_ed25519
+*credentials*.json
+service-account*.json
 
 # Internal planning / strategy / decision docs — not part of the public submission.
 # These stay on disk locally but are not pushed to the public repo.

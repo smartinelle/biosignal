@@ -59,8 +59,11 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
-streamlit run app/main.py --server.port 8501 --server.address 0.0.0.0
+streamlit run app/main.py --server.port 8501
 ```
+
+The app binds to `127.0.0.1` (loopback) by default. Only expose it on the network when
+you intentionally need remote access: `streamlit run app/main.py --server.address 0.0.0.0`.
 
 ## Verification
 
@@ -70,6 +73,14 @@ python -m compileall -q app
 streamlit run app/main.py --server.port 8501 --server.address 127.0.0.1 --server.headless true
 curl -fsS http://127.0.0.1:8501/_stcore/health
 ```
+
+## Security
+
+No secrets are committed; all credentials load from `.env` (gitignored). Every partner
+integration has a no-network fallback, all outbound calls use fixed endpoints with
+timeouts, and the app binds to loopback by default. See [`SECURITY.md`](SECURITY.md) for
+the full posture and disclosure policy. The repo is scanned with
+[Aikido](https://www.aikido.dev/) (SCA, secrets, SAST) for the security side challenge.
 
 ## Safety scope
 
