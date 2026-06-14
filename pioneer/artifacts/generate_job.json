@@ -1,0 +1,28 @@
+{
+  "job_id": "823873d5-a85f-49e7-9b39-4ad3343e17da",
+  "status": "ready",
+  "data": null,
+  "count": 5,
+  "task_type": "ner",
+  "token_usage": null,
+  "dataset": {
+    "id": "823873d5-a85f-49e7-9b39-4ad3343e17da",
+    "dataset_name": "biosignal-troubleshooting-probe",
+    "version_number": "1",
+    "dataset_path": "<redacted-user-id>/823873d5-a85f-49e7-9b39-4ad3343e17da/1",
+    "sample_size": 5,
+    "labels": [
+      "macro_signal",
+      "trend",
+      "candidate_mechanism",
+      "assay"
+    ],
+    "project_id": null,
+    "is_seed": false,
+    "root_dataset_id": null,
+    "synthesis_session_id": null
+  },
+  "error": null,
+  "is_seed": false,
+  "created_at": "2026-06-14T09:13:22.932198+00:00"
+}

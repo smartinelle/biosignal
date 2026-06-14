@@ -4,3 +4,20 @@ __pycache__/
 .env
 .streamlit/secrets.toml
 .DS_Store
+.pytest_cache/
+
+# Internal planning / strategy / decision docs — not part of the public submission.
+# These stay on disk locally but are not pushed to the public repo.
+CLAUDE.md
+docs/research/
+docs/plans/
+docs/product/
+docs/submission/
+docs/claude_long_running_task.md
+docs/demo_script.md
+docs/final_submission_runbook.md
+docs/next-pass-uiux-plan.md
+docs/pioneer_strategy.md
+docs/product-spec.md
+docs/submission_checklist.md
+docs/venture_positioning.md

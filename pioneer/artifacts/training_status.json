@@ -1,0 +1,50 @@
+{
+  "id": "f368a521-8fc1-4c57-9b4b-4879b48d1644",
+  "user_id": "<redacted-user-id>",
+  "project_id": "81b83ae0-65a4-405d-ab7b-1df3b38155c7",
+  "model_name": "biosignal-gliner2-troubleshooting",
+  "datasets": [
+    {
+      "name": "biosignal-troubleshooting-probe",
+      "version": "1"
+    }
+  ],
+  "base_model": "fastino/gliner2-base-v1",
+  "validation_data_percentage": 0.2,
+  "nr_epochs": 100,
+  "learning_rate": 2e-05,
+  "batch_size": 4,
+  "trained_model_path": null,
+  "job_reference": "modal:fc-01KV2PRWRWM8SEXNCR00J4FK3A",
+  "instance_type": "modal-l4",
+  "status": "running",
+  "normalized_status": "running",
+  "is_terminal_status": false,
+  "error_message": null,
+  "created_at": "2026-06-14T09:17:58.928680+00:00",
+  "updated_at": "2026-06-14T09:18:22.414609+00:00",
+  "started_at": "2026-06-14T09:18:22.414636+00:00",
+  "completed_at": null,
+  "model_auto_selected": false,
+  "model_selection_reason": null,
+  "task_type": "ner",
+  "labels": [
+    "macro_signal",
+    "trend",
+    "candidate_mechanism",
+    "assay"
+  ],
+  "example": null,
+  "metrics": {
+    "final_training_loss": 21.943943,
+    "final_validation_loss": 16.879229,
+    "best_validation_loss": 16.879229
+  },
+  "version_number": "1",
+  "root_job_id": null,
+  "provider_deployments": null,
+  "provider_name": "modal",
+  "progress_percent": null,
+  "current_epoch": null,
+  "deployment_status": null
+}

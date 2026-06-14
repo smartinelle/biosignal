@@ -1,0 +1,11 @@
+[
+  "fastino/gliguard-LLMGuardrails-300M",
+  "fastino/gliner2-base-v1",
+  "fastino/gliner2-large-v1",
+  "fastino/gliner2-multi-v1",
+  "fastino/gliner2-multi-large-v1",
+  "fastino/gliner2-privacy-filter-PII-multi",
+  "text-embedding-3-large",
+  "text-embedding-3-small",
+  "text-embedding-ada-002"
+]
